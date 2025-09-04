@@ -20,297 +20,248 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"testing"
 	"time"
 
-	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
+	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
 )
 
-var _ = Describe("Config", func() {
-	var (
-		tempDir string
-	)
+func TestLoadInjectConfFromFile(t *testing.T) {
+	tempDir := t.TempDir()
 
-	BeforeEach(func() {
-		tempDir = GinkgoT().TempDir()
+	t.Run("load valid config file successfully", func(t *testing.T) {
+		configPath := filepath.Join(tempDir, "valid-config.yaml")
+		configData := &InjectConf{
+			Enable:          true,
+			ProxyPort:       8080,
+			CliToolsImage:   "test-image:latest",
+			CliToolsDirPath: "/test/tools",
+		}
+		yamlData, err := yaml.Marshal(configData)
+		assert.NoError(t, err)
+		err = os.WriteFile(configPath, yamlData, 0644)
+		assert.NoError(t, err)
+
+		loadedConfig, err := LoadInjectConfFromFile(configPath)
+		assert.NoError(t, err)
+		assert.Equal(t, true, loadedConfig.Enable)
+		assert.Equal(t, 8080, loadedConfig.ProxyPort)
+		assert.Equal(t, "test-image:latest", loadedConfig.CliToolsImage)
+		assert.Equal(t, "/test/tools", loadedConfig.CliToolsDirPath)
 	})
 
-	Describe("LoadInjectConfFromFile", func() {
-		Context("when loading configuration from file", func() {
-			It("should load valid config file successfully", func() {
-				By("creating a valid config file")
-				configPath := filepath.Join(tempDir, "valid-config.yaml")
-				configData := &InjectConf{
-					Enable:          true,
-					ProxyPort:       8080,
-					CliToolsImage:   "test-image:latest",
-					CliToolsDirPath: "/test/tools",
-				}
-				yamlData, err := yaml.Marshal(configData)
-				Expect(err).NotTo(HaveOccurred())
-				err = os.WriteFile(configPath, yamlData, 0644)
-				Expect(err).NotTo(HaveOccurred())
-
-				By("loading the config from file")
-				loadedConfig, err := LoadInjectConfFromFile(configPath)
-				Expect(err).NotTo(HaveOccurred())
-
-				By("verifying the loaded configuration")
-				Expect(loadedConfig.Enable).To(BeTrue())
-				Expect(loadedConfig.ProxyPort).To(Equal(8080))
-				Expect(loadedConfig.CliToolsImage).To(Equal("test-image:latest"))
-				Expect(loadedConfig.CliToolsDirPath).To(Equal("/test/tools"))
-			})
-
-			It("should return error for non-existent file", func() {
-				By("attempting to load a non-existent file")
-				_, err := LoadInjectConfFromFile("non-existent-file.yaml")
-				Expect(err).To(HaveOccurred())
-				Expect(os.IsNotExist(err)).To(BeTrue())
-			})
-
-			It("should return error for invalid YAML content", func() {
-				By("creating a file with invalid YAML content")
-				configPath := filepath.Join(tempDir, "invalid.yaml")
-				invalidYAML := "invalid: yaml: content: ["
-				err := os.WriteFile(configPath, []byte(invalidYAML), 0644)
-				Expect(err).NotTo(HaveOccurred())
-
-				By("attempting to load the invalid YAML file")
-				_, err = LoadInjectConfFromFile(configPath)
-				Expect(err).To(HaveOccurred())
-			})
-
-			It("should handle partial config with zero values", func() {
-				By("creating a partial config file")
-				configPath := filepath.Join(tempDir, "partial-config.yaml")
-				partialConfig := &InjectConf{Enable: true}
-				yamlData, err := yaml.Marshal(partialConfig)
-				Expect(err).NotTo(HaveOccurred())
-				err = os.WriteFile(configPath, yamlData, 0644)
-				Expect(err).NotTo(HaveOccurred())
-
-				By("loading the partial config")
-				loadedConfig, err := LoadInjectConfFromFile(configPath)
-				Expect(err).NotTo(HaveOccurred())
-
-				By("verifying the loaded configuration with zero values")
-				Expect(loadedConfig.Enable).To(BeTrue())
-				Expect(loadedConfig.ProxyPort).To(Equal(0))
-				Expect(loadedConfig.CliToolsImage).To(BeEmpty())
-				Expect(loadedConfig.CliToolsDirPath).To(BeEmpty())
-			})
-		})
+	t.Run("return error for non-existent file", func(t *testing.T) {
+		_, err := LoadInjectConfFromFile("non-existent-file.yaml")
+		assert.Error(t, err)
+		assert.True(t, os.IsNotExist(err))
 	})
 
-	Describe("LoadInjectConf", func() {
-		Context("when loading configuration with fallback behavior", func() {
-			It("should load config from file when file exists", func() {
-				By("creating an existing config file")
-				configPath := filepath.Join(tempDir, "existing-config.yaml")
-				configData := &InjectConf{
-					Enable:    false,
-					ProxyPort: 1234,
-				}
-				yamlData, err := yaml.Marshal(configData)
-				Expect(err).NotTo(HaveOccurred())
-				err = os.WriteFile(configPath, yamlData, 0644)
-				Expect(err).NotTo(HaveOccurred())
+	t.Run("return error for invalid YAML content", func(t *testing.T) {
+		configPath := filepath.Join(tempDir, "invalid.yaml")
+		invalidYAML := "invalid: yaml: content: ["
+		err := os.WriteFile(configPath, []byte(invalidYAML), 0644)
+		assert.NoError(t, err)
 
-				By("loading the config")
-				loadedConfig := LoadInjectConf(configPath)
-				Expect(loadedConfig.Enable).To(BeFalse())
-				Expect(loadedConfig.ProxyPort).To(Equal(1234))
-			})
-
-			It("should return default config when file does not exist", func() {
-				By("loading a non-existent file")
-				loadedConfig := LoadInjectConf("non-existent-file.yaml")
-				expected := NewDefaultInjectConf()
-
-				By("verifying the default configuration is returned")
-				Expect(loadedConfig.Enable).To(Equal(expected.Enable))
-				Expect(loadedConfig.ProxyPort).To(Equal(expected.ProxyPort))
-				Expect(loadedConfig.CliToolsImage).To(Equal(expected.CliToolsImage))
-				Expect(loadedConfig.CliToolsDirPath).To(Equal(expected.CliToolsDirPath))
-			})
-
-			It("should return default config when file is invalid", func() {
-				By("creating an invalid config file")
-				configPath := filepath.Join(tempDir, "invalid.yaml")
-				invalidYAML := "invalid: yaml: content: ["
-				err := os.WriteFile(configPath, []byte(invalidYAML), 0644)
-				Expect(err).NotTo(HaveOccurred())
-
-				By("loading the invalid file")
-				loadedConfig := LoadInjectConf(configPath)
-				expected := NewDefaultInjectConf()
-
-				By("verifying the default configuration is returned")
-				Expect(loadedConfig.Enable).To(Equal(expected.Enable))
-				Expect(loadedConfig.ProxyPort).To(Equal(expected.ProxyPort))
-				Expect(loadedConfig.CliToolsImage).To(Equal(expected.CliToolsImage))
-				Expect(loadedConfig.CliToolsDirPath).To(Equal(expected.CliToolsDirPath))
-			})
-		})
+		_, err = LoadInjectConfFromFile(configPath)
+		assert.Error(t, err)
 	})
 
-	Describe("NewDefaultInjectConf", func() {
-		It("should return the correct default configuration", func() {
-			By("creating a new default config")
-			defaultConfig := NewDefaultInjectConf()
+	t.Run("handle partial config with zero values", func(t *testing.T) {
+		configPath := filepath.Join(tempDir, "partial-config.yaml")
+		partialConfig := &InjectConf{Enable: true}
+		yamlData, err := yaml.Marshal(partialConfig)
+		assert.NoError(t, err)
+		err = os.WriteFile(configPath, yamlData, 0644)
+		assert.NoError(t, err)
 
-			By("verifying the default values")
-			Expect(defaultConfig.Enable).To(BeTrue())
-			Expect(defaultConfig.ProxyPort).To(Equal(4001))
-			Expect(defaultConfig.CliToolsImage).To(Equal("dragonflyoss/cli-tools:latest"))
-			Expect(defaultConfig.CliToolsDirPath).To(Equal("/dragonfly-tools"))
-		})
+		loadedConfig, err := LoadInjectConfFromFile(configPath)
+		assert.NoError(t, err)
+		assert.Equal(t, true, loadedConfig.Enable)
+		assert.Equal(t, 0, loadedConfig.ProxyPort)
+		assert.Equal(t, "", loadedConfig.CliToolsImage)
+		assert.Equal(t, "", loadedConfig.CliToolsDirPath)
+	})
+}
+
+func TestLoadInjectConf(t *testing.T) {
+	tempDir := t.TempDir()
+
+	t.Run("load config from file when file exists", func(t *testing.T) {
+		configPath := filepath.Join(tempDir, "existing-config.yaml")
+		configData := &InjectConf{
+			Enable:    false,
+			ProxyPort: 1234,
+		}
+		yamlData, err := yaml.Marshal(configData)
+		assert.NoError(t, err)
+		err = os.WriteFile(configPath, yamlData, 0644)
+		assert.NoError(t, err)
+
+		loadedConfig := LoadInjectConf(configPath)
+		assert.Equal(t, false, loadedConfig.Enable)
+		assert.Equal(t, 1234, loadedConfig.ProxyPort)
 	})
 
-	Describe("ConfigManager", func() {
-		var (
-			configManager *ConfigManager
-		)
-
-		Context("with basic functionality", func() {
-			BeforeEach(func() {
-				By("creating initial configuration")
-				configPath := filepath.Join(tempDir, "config.yaml")
-				initialConfig := &InjectConf{
-					Enable:          true,
-					ProxyPort:       3000,
-					CliToolsImage:   "initial:latest",
-					CliToolsDirPath: "/initial",
-				}
-				data, err := yaml.Marshal(initialConfig)
-				Expect(err).NotTo(HaveOccurred())
-				err = os.WriteFile(configPath, data, 0644)
-				Expect(err).NotTo(HaveOccurred())
-
-				By("creating the ConfigManager")
-				configManager = NewConfigManager(tempDir)
-				Expect(configManager).NotTo(BeNil())
-			})
-
-			It("should get the correct configuration", func() {
-				By("retrieving the configuration")
-				config := configManager.GetConfig()
-
-				By("verifying the configuration values")
-				Expect(config.Enable).To(BeTrue())
-				Expect(config.ProxyPort).To(Equal(3000))
-				Expect(config.CliToolsImage).To(Equal("initial:latest"))
-				Expect(config.CliToolsDirPath).To(Equal("/initial"))
-			})
-
-			It("should reload configuration correctly", func() {
-				By("updating the configuration file")
-				updatedConfig := &InjectConf{
-					Enable:    false,
-					ProxyPort: 9999,
-				}
-				data, err := yaml.Marshal(updatedConfig)
-				Expect(err).NotTo(HaveOccurred())
-				configPath := filepath.Join(tempDir, "config.yaml")
-				err = os.WriteFile(configPath, data, 0644)
-				Expect(err).NotTo(HaveOccurred())
-
-				By("triggering configuration reload")
-				configManager.reload()
-
-				By("verifying the updated configuration")
-				config := configManager.GetConfig()
-				Expect(config.Enable).To(BeFalse())
-				Expect(config.ProxyPort).To(Equal(9999))
-			})
-		})
-
-		Context("when configuration file does not exist", func() {
-			It("should use default configuration", func() {
-				By("creating ConfigManager without config file")
-				configManager := NewConfigManager(tempDir)
-
-				By("verifying default configuration is used")
-				config := configManager.GetConfig()
-				expected := NewDefaultInjectConf()
-				Expect(config.Enable).To(Equal(expected.Enable))
-				Expect(config.ProxyPort).To(Equal(expected.ProxyPort))
-				Expect(config.CliToolsImage).To(Equal(expected.CliToolsImage))
-				Expect(config.CliToolsDirPath).To(Equal(expected.CliToolsDirPath))
-			})
-		})
-
-		Context("Start and Stop functionality", func() {
-			It("should start and stop gracefully", func() {
-				By("creating ConfigManager")
-				configManager := NewConfigManager(tempDir)
-
-				By("creating a cancellable context")
-				ctx, cancel := context.WithCancel(context.Background())
-				defer cancel()
-
-				By("starting the ConfigManager")
-				done := make(chan error)
-				go func() {
-					done <- configManager.Start(ctx)
-				}()
-
-				By("waiting for startup")
-				time.Sleep(100 * time.Millisecond)
-
-				By("cancelling the context")
-				cancel()
-
-				By("waiting for graceful shutdown")
-				Eventually(done, 5*time.Second).Should(Receive(BeNil()))
-			})
-		})
-
-		Context("concurrent access", func() {
-			BeforeEach(func() {
-				By("creating initial configuration for concurrent testing")
-				configPath := filepath.Join(tempDir, "config.yaml")
-				configData := &InjectConf{
-					Enable:          true,
-					ProxyPort:       3000,
-					CliToolsImage:   "initial:latest",
-					CliToolsDirPath: "/initial",
-				}
-				yamlData, err := yaml.Marshal(configData)
-				Expect(err).NotTo(HaveOccurred())
-				err = os.WriteFile(configPath, yamlData, 0644)
-				Expect(err).NotTo(HaveOccurred())
-
-				configManager = NewConfigManager(tempDir)
-			})
-
-			It("should handle concurrent access safely", func() {
-				By("starting concurrent readers")
-				done := make(chan bool)
-				go func() {
-					defer GinkgoRecover()
-					for i := 0; i < 100; i++ {
-						config := configManager.GetConfig()
-						Expect(config).NotTo(BeNil())
-					}
-					done <- true
-				}()
-
-				By("starting concurrent reloaders")
-				go func() {
-					defer GinkgoRecover()
-					for i := 0; i < 100; i++ {
-						configManager.reload()
-					}
-					done <- true
-				}()
-
-				By("waiting for all goroutines to complete")
-				Eventually(done).Should(Receive())
-				Eventually(done).Should(Receive())
-			})
-		})
+	t.Run("return default config when file does not exist", func(t *testing.T) {
+		loadedConfig := LoadInjectConf("non-existent-file.yaml")
+		expected := NewDefaultInjectConf()
+		assert.Equal(t, expected.Enable, loadedConfig.Enable)
+		assert.Equal(t, expected.ProxyPort, loadedConfig.ProxyPort)
+		assert.Equal(t, expected.CliToolsImage, loadedConfig.CliToolsImage)
+		assert.Equal(t, expected.CliToolsDirPath, loadedConfig.CliToolsDirPath)
 	})
-})
+
+	t.Run("return default config when file is invalid", func(t *testing.T) {
+		configPath := filepath.Join(tempDir, "invalid.yaml")
+		invalidYAML := "invalid: yaml: content: ["
+		err := os.WriteFile(configPath, []byte(invalidYAML), 0644)
+		assert.NoError(t, err)
+
+		loadedConfig := LoadInjectConf(configPath)
+		expected := NewDefaultInjectConf()
+		assert.Equal(t, expected.Enable, loadedConfig.Enable)
+		assert.Equal(t, expected.ProxyPort, loadedConfig.ProxyPort)
+		assert.Equal(t, expected.CliToolsImage, loadedConfig.CliToolsImage)
+		assert.Equal(t, expected.CliToolsDirPath, loadedConfig.CliToolsDirPath)
+	})
+}
+
+func TestNewDefaultInjectConf(t *testing.T) {
+	defaultConfig := NewDefaultInjectConf()
+	assert.Equal(t, true, defaultConfig.Enable)
+	assert.Equal(t, 4001, defaultConfig.ProxyPort)
+	assert.Equal(t, "dragonflyoss/cli-tools:latest", defaultConfig.CliToolsImage)
+	assert.Equal(t, "/dragonfly-tools", defaultConfig.CliToolsDirPath)
+}
+
+func TestConfigManager(t *testing.T) {
+	tempDir := t.TempDir()
+	configPath := filepath.Join(tempDir, "config.yaml")
+
+	// 创建初始配置
+	initialConfig := &InjectConf{
+		Enable:          true,
+		ProxyPort:       3000,
+		CliToolsImage:   "initial:latest",
+		CliToolsDirPath: "/initial",
+	}
+	data, err := yaml.Marshal(initialConfig)
+	assert.NoError(t, err)
+	err = os.WriteFile(configPath, data, 0644)
+	assert.NoError(t, err)
+
+	// 创建ConfigManager
+	configManager := NewConfigManager(tempDir)
+	assert.NotNil(t, configManager)
+
+	// 测试GetConfig
+	config := configManager.GetConfig()
+	assert.Equal(t, initialConfig.Enable, config.Enable)
+	assert.Equal(t, initialConfig.ProxyPort, config.ProxyPort)
+	assert.Equal(t, initialConfig.CliToolsImage, config.CliToolsImage)
+	assert.Equal(t, initialConfig.CliToolsDirPath, config.CliToolsDirPath)
+
+	// 测试配置重载
+	updatedConfig := &InjectConf{
+		Enable:    false,
+		ProxyPort: 9999,
+	}
+	data, err = yaml.Marshal(updatedConfig)
+	assert.NoError(t, err)
+	err = os.WriteFile(configPath, data, 0644)
+	assert.NoError(t, err)
+
+	// 手动触发重载
+	configManager.reload()
+
+	// 验证更新后的配置
+	config = configManager.GetConfig()
+	assert.Equal(t, updatedConfig.Enable, config.Enable)
+	assert.Equal(t, updatedConfig.ProxyPort, config.ProxyPort)
+}
+
+func TestConfigManagerStart(t *testing.T) {
+	tempDir := t.TempDir()
+
+	// 创建ConfigManager
+	configManager := NewConfigManager(tempDir)
+
+	// 创建可取消的context
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// 启动ConfigManager
+	done := make(chan error)
+	go func() {
+		done <- configManager.Start(ctx)
+	}()
+
+	// 等待一小段时间确保启动
+	time.Sleep(100 * time.Millisecond)
+
+	// 取消context
+	cancel()
+
+	// 等待退出
+	select {
+	case err := <-done:
+		assert.NoError(t, err)
+	case <-time.After(5 * time.Second):
+		t.Fatal("ConfigManager did not stop within timeout")
+	}
+}
+
+func TestConfigManagerFileNotExist(t *testing.T) {
+	tempDir := t.TempDir()
+
+	// 创建ConfigManager，但配置文件不存在
+	configManager := NewConfigManager(tempDir)
+
+	// 应该使用默认配置
+	config := configManager.GetConfig()
+	expected := NewDefaultInjectConf()
+	assert.Equal(t, expected.Enable, config.Enable)
+	assert.Equal(t, expected.ProxyPort, config.ProxyPort)
+	assert.Equal(t, expected.CliToolsImage, config.CliToolsImage)
+	assert.Equal(t, expected.CliToolsDirPath, config.CliToolsDirPath)
+}
+
+func TestConfigManagerConcurrentAccess(t *testing.T) {
+	tempDir := t.TempDir()
+	configPath := filepath.Join(tempDir, "config.yaml")
+
+	// 创建初始配置
+	configData := &InjectConf{
+		Enable:          true,
+		ProxyPort:       3000,
+		CliToolsImage:   "initial:latest",
+		CliToolsDirPath: "/initial",
+	}
+	yamlData, err := yaml.Marshal(configData)
+	assert.NoError(t, err)
+	err = os.WriteFile(configPath, yamlData, 0644)
+	assert.NoError(t, err)
+
+	configManager := NewConfigManager(tempDir)
+
+	done := make(chan bool)
+	go func() {
+		for i := 0; i < 100; i++ {
+			config := configManager.GetConfig()
+			assert.NotNil(t, config)
+		}
+		done <- true
+	}()
+
+	go func() {
+		for i := 0; i < 100; i++ {
+			configManager.reload()
+		}
+		done <- true
+	}()
+
+	// 等待两个goroutine完成
+	<-done
+	<-done
+}

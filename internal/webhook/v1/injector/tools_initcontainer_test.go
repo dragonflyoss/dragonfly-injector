@@ -3,29 +3,21 @@ package injector
 import (
 	"fmt"
 	"path/filepath"
+	"testing"
 
-	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
+	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-var _ = Describe("ToolsInitcontainerInjector", func() {
-	var (
-		injector             *ToolsInitcontainerInjector
-		defaultCliToolsDir   string
-		defaultMountPath     string
-		defaultCliToolsImage string
-		annotationImage      string
-	)
+func TestToolsInitcontainerInjector_Inject(t *testing.T) {
+	injector := NewToolsInitcontainerInjector()
 
-	BeforeEach(func() {
-		injector = NewToolsInitcontainerInjector()
-		defaultCliToolsDir = "/opt/df-tools"
-		defaultMountPath = filepath.Clean(defaultCliToolsDir) + "-mount"
-		defaultCliToolsImage = "default/tools-image:latest"
-		annotationImage = "annotated/tools-image:v1.2.3"
-	})
+	// Define common variables for test cases to keep them DRY
+	defaultCliToolsDir := "/opt/df-tools"
+	defaultMountPath := filepath.Clean(defaultCliToolsDir) + "-mount"
+	defaultCliToolsImage := "default/tools-image:latest"
+	annotationImage := "annotated/tools-image:v1.2.3"
 
 	// Helper function to create a clean pod object for each test
 	makePod := func(name string, containers int, annotations map[string]string) *corev1.Pod {
@@ -82,252 +74,180 @@ var _ = Describe("ToolsInitcontainerInjector", func() {
 		}
 	}
 
-	Describe("Inject", func() {
-		Context("when injecting initContainer, volume, mount, and env", func() {
-			It("should inject into a simple pod successfully", func() {
-				By("creating a simple pod")
-				pod := makePod("test-pod-1", 1, nil)
-				config := &InjectConf{CliToolsDirPath: defaultCliToolsDir, CliToolsImage: defaultCliToolsImage}
-
-				By("creating expected pod")
-				expectedPod := makePod("test-pod-1", 1, nil)
-				expectedPod.Spec.InitContainers = []corev1.Container{
+	testCases := []struct {
+		name        string
+		config      *InjectConf
+		pod         *corev1.Pod
+		expectedPod *corev1.Pod
+	}{
+		{
+			name:   "should inject initContainer, volume, mount, and env into a simple pod",
+			config: &InjectConf{CliToolsDirPath: defaultCliToolsDir, CliToolsImage: defaultCliToolsImage},
+			pod:    makePod("test-pod-1", 1, nil),
+			expectedPod: func() *corev1.Pod {
+				p := makePod("test-pod-1", 1, nil)
+				p.Spec.InitContainers = []corev1.Container{
 					makeExpectedInitContainer(defaultCliToolsImage, defaultCliToolsDir, defaultMountPath),
 				}
-				expectedPod.Spec.Volumes = []corev1.Volume{makeExpectedVolume()}
-				expectedPod.Spec.Containers[0].VolumeMounts = []corev1.VolumeMount{makeExpectedVolumeMount(defaultMountPath)}
-				expectedPod.Spec.Containers[0].Env = []corev1.EnvVar{makeExpectedEnvVar(defaultMountPath)}
-
-				By("performing injection")
-				injector.Inject(pod, config)
-
-				By("verifying the result")
-				Expect(pod).To(Equal(expectedPod))
-			})
-
-			It("should use image from annotation if present", func() {
-				By("creating a pod with image annotation")
-				pod := makePod("test-pod-2", 1, map[string]string{CliToolsImageAnnotation: annotationImage})
-				config := &InjectConf{CliToolsDirPath: defaultCliToolsDir, CliToolsImage: defaultCliToolsImage}
-
-				By("creating expected pod with annotation image")
-				expectedPod := makePod("test-pod-2", 1, map[string]string{CliToolsImageAnnotation: annotationImage})
-				expectedPod.Spec.InitContainers = []corev1.Container{
+				p.Spec.Volumes = []corev1.Volume{makeExpectedVolume()}
+				p.Spec.Containers[0].VolumeMounts = []corev1.VolumeMount{makeExpectedVolumeMount(defaultMountPath)}
+				p.Spec.Containers[0].Env = []corev1.EnvVar{makeExpectedEnvVar(defaultMountPath)}
+				return p
+			}(),
+		},
+		{
+			name:   "should use image from annotation if present",
+			config: &InjectConf{CliToolsDirPath: defaultCliToolsDir, CliToolsImage: defaultCliToolsImage},
+			pod:    makePod("test-pod-2", 1, map[string]string{CliToolsImageAnnotation: annotationImage}),
+			expectedPod: func() *corev1.Pod {
+				p := makePod("test-pod-2", 1, map[string]string{CliToolsImageAnnotation: annotationImage})
+				// The image should come from the annotation
+				p.Spec.InitContainers = []corev1.Container{
 					makeExpectedInitContainer(annotationImage, defaultCliToolsDir, defaultMountPath),
 				}
-				expectedPod.Spec.Volumes = []corev1.Volume{makeExpectedVolume()}
-				expectedPod.Spec.Containers[0].VolumeMounts = []corev1.VolumeMount{makeExpectedVolumeMount(defaultMountPath)}
-				expectedPod.Spec.Containers[0].Env = []corev1.EnvVar{makeExpectedEnvVar(defaultMountPath)}
-
-				By("performing injection")
-				injector.Inject(pod, config)
-
-				By("verifying the result")
-				Expect(pod).To(Equal(expectedPod))
-			})
-
-			It("should inject into multiple containers", func() {
-				By("creating a pod with multiple containers")
-				pod := makePod("test-pod-3", 2, nil)
-				config := &InjectConf{CliToolsDirPath: defaultCliToolsDir, CliToolsImage: defaultCliToolsImage}
-
-				By("creating expected pod")
-				expectedPod := makePod("test-pod-3", 2, nil)
-				expectedPod.Spec.InitContainers = []corev1.Container{
+				p.Spec.Volumes = []corev1.Volume{makeExpectedVolume()}
+				p.Spec.Containers[0].VolumeMounts = []corev1.VolumeMount{makeExpectedVolumeMount(defaultMountPath)}
+				p.Spec.Containers[0].Env = []corev1.EnvVar{makeExpectedEnvVar(defaultMountPath)}
+				return p
+			}(),
+		},
+		{
+			name:   "should inject into multiple containers",
+			config: &InjectConf{CliToolsDirPath: defaultCliToolsDir, CliToolsImage: defaultCliToolsImage},
+			pod:    makePod("test-pod-3", 2, nil),
+			expectedPod: func() *corev1.Pod {
+				p := makePod("test-pod-3", 2, nil)
+				p.Spec.InitContainers = []corev1.Container{
 					makeExpectedInitContainer(defaultCliToolsImage, defaultCliToolsDir, defaultMountPath),
 				}
-				expectedPod.Spec.Volumes = []corev1.Volume{makeExpectedVolume()}
-				expectedPod.Spec.Containers[0].VolumeMounts = []corev1.VolumeMount{makeExpectedVolumeMount(defaultMountPath)}
-				expectedPod.Spec.Containers[0].Env = []corev1.EnvVar{makeExpectedEnvVar(defaultMountPath)}
-				expectedPod.Spec.Containers[1].VolumeMounts = []corev1.VolumeMount{makeExpectedVolumeMount(defaultMountPath)}
-				expectedPod.Spec.Containers[1].Env = []corev1.EnvVar{makeExpectedEnvVar(defaultMountPath)}
-
-				By("performing injection")
-				injector.Inject(pod, config)
-
-				By("verifying the result")
-				Expect(pod).To(Equal(expectedPod))
-			})
-
-			It("should be idempotent and not inject if everything already exists", func() {
-				By("creating a pod with everything already injected")
-				pod := makePod("test-pod-4", 1, nil)
-				pod.Spec.InitContainers = []corev1.Container{
+				p.Spec.Volumes = []corev1.Volume{makeExpectedVolume()}
+				// Both containers should get the mount and env
+				p.Spec.Containers[0].VolumeMounts = []corev1.VolumeMount{makeExpectedVolumeMount(defaultMountPath)}
+				p.Spec.Containers[0].Env = []corev1.EnvVar{makeExpectedEnvVar(defaultMountPath)}
+				p.Spec.Containers[1].VolumeMounts = []corev1.VolumeMount{makeExpectedVolumeMount(defaultMountPath)}
+				p.Spec.Containers[1].Env = []corev1.EnvVar{makeExpectedEnvVar(defaultMountPath)}
+				return p
+			}(),
+		},
+		{
+			name:   "should be idempotent and not inject if everything already exists",
+			config: &InjectConf{CliToolsDirPath: defaultCliToolsDir, CliToolsImage: defaultCliToolsImage},
+			pod: func() *corev1.Pod {
+				p := makePod("test-pod-4", 1, nil)
+				p.Spec.InitContainers = []corev1.Container{
 					makeExpectedInitContainer(defaultCliToolsImage, defaultCliToolsDir, defaultMountPath),
 				}
-				pod.Spec.Volumes = []corev1.Volume{makeExpectedVolume()}
-				pod.Spec.Containers[0].VolumeMounts = []corev1.VolumeMount{makeExpectedVolumeMount(defaultMountPath)}
-				pod.Spec.Containers[0].Env = []corev1.EnvVar{makeExpectedEnvVar(defaultMountPath)}
-
-				By("creating expected pod (should be unchanged)")
-				expectedPod := makePod("test-pod-4", 1, nil)
-				expectedPod.Spec.InitContainers = []corev1.Container{
+				p.Spec.Volumes = []corev1.Volume{makeExpectedVolume()}
+				p.Spec.Containers[0].VolumeMounts = []corev1.VolumeMount{makeExpectedVolumeMount(defaultMountPath)}
+				p.Spec.Containers[0].Env = []corev1.EnvVar{makeExpectedEnvVar(defaultMountPath)}
+				return p
+			}(),
+			expectedPod: func() *corev1.Pod {
+				p := makePod("test-pod-4", 1, nil)
+				p.Spec.InitContainers = []corev1.Container{
 					makeExpectedInitContainer(defaultCliToolsImage, defaultCliToolsDir, defaultMountPath),
 				}
-				expectedPod.Spec.Volumes = []corev1.Volume{makeExpectedVolume()}
-				expectedPod.Spec.Containers[0].VolumeMounts = []corev1.VolumeMount{makeExpectedVolumeMount(defaultMountPath)}
-				expectedPod.Spec.Containers[0].Env = []corev1.EnvVar{makeExpectedEnvVar(defaultMountPath)}
-
-				By("performing injection")
-				config := &InjectConf{CliToolsDirPath: defaultCliToolsDir, CliToolsImage: defaultCliToolsImage}
-				injector.Inject(pod, config)
-
-				By("verifying the result")
-				Expect(pod).To(Equal(expectedPod))
-			})
-
-			It("should handle pods with no containers gracefully", func() {
-				By("creating a pod with no containers")
-				pod := makePod("test-pod-5", 0, nil)
-				config := &InjectConf{CliToolsDirPath: defaultCliToolsDir, CliToolsImage: defaultCliToolsImage}
-
-				By("creating expected pod")
-				expectedPod := makePod("test-pod-5", 0, nil)
-				expectedPod.Spec.InitContainers = []corev1.Container{
+				p.Spec.Volumes = []corev1.Volume{makeExpectedVolume()}
+				p.Spec.Containers[0].VolumeMounts = []corev1.VolumeMount{makeExpectedVolumeMount(defaultMountPath)}
+				p.Spec.Containers[0].Env = []corev1.EnvVar{makeExpectedEnvVar(defaultMountPath)}
+				return p
+			}(),
+		},
+		{
+			name:   "should handle pods with no containers gracefully",
+			config: &InjectConf{CliToolsDirPath: defaultCliToolsDir, CliToolsImage: defaultCliToolsImage},
+			pod:    makePod("test-pod-5", 0, nil),
+			expectedPod: func() *corev1.Pod {
+				p := makePod("test-pod-5", 0, nil)
+				p.Spec.InitContainers = []corev1.Container{
 					makeExpectedInitContainer(defaultCliToolsImage, defaultCliToolsDir, defaultMountPath),
 				}
-				expectedPod.Spec.Volumes = []corev1.Volume{makeExpectedVolume()}
+				p.Spec.Volumes = []corev1.Volume{makeExpectedVolume()}
+				// Spec.Containers remains empty
+				return p
+			}(),
+		},
+		{
+			// This test now confirms the bug fix in `CheckVolumeMountIsExist`
+			name:   "should correctly inject into container-2 even if container-1 already has dependencies",
+			config: &InjectConf{CliToolsDirPath: defaultCliToolsDir, CliToolsImage: defaultCliToolsImage},
+			pod: func() *corev1.Pod {
+				p := makePod("test-pod-6", 2, nil)
+				// The initContainer and Volume already exist
+				p.Spec.InitContainers = []corev1.Container{makeExpectedInitContainer(defaultCliToolsImage, defaultCliToolsDir, defaultMountPath)}
+				p.Spec.Volumes = []corev1.Volume{makeExpectedVolume()}
+				// container-1 already has the mount and env, but container-2 does not
+				p.Spec.Containers[0].VolumeMounts = []corev1.VolumeMount{makeExpectedVolumeMount(defaultMountPath)}
+				p.Spec.Containers[0].Env = []corev1.EnvVar{makeExpectedEnvVar(defaultMountPath)}
+				return p
+			}(),
+			expectedPod: func() *corev1.Pod {
+				p := makePod("test-pod-6", 2, nil)
+				p.Spec.InitContainers = []corev1.Container{makeExpectedInitContainer(defaultCliToolsImage, defaultCliToolsDir, defaultMountPath)}
+				p.Spec.Volumes = []corev1.Volume{makeExpectedVolume()}
+				// The correct behavior is that container-2 also gets the mount and env
+				p.Spec.Containers[0].VolumeMounts = []corev1.VolumeMount{makeExpectedVolumeMount(defaultMountPath)}
+				p.Spec.Containers[0].Env = []corev1.EnvVar{makeExpectedEnvVar(defaultMountPath)}
+				p.Spec.Containers[1].VolumeMounts = []corev1.VolumeMount{makeExpectedVolumeMount(defaultMountPath)}
+				p.Spec.Containers[1].Env = []corev1.EnvVar{makeExpectedEnvVar(defaultMountPath)}
+				return p
+			}(),
+		},
+	}
 
-				By("performing injection")
-				injector.Inject(pod, config)
-
-				By("verifying the result")
-				Expect(pod).To(Equal(expectedPod))
-			})
-
-			It("should correctly inject into container-2 even if container-1 already has dependencies", func() {
-				By("creating a pod where container-1 already has dependencies")
-				pod := makePod("test-pod-6", 2, nil)
-				pod.Spec.InitContainers = []corev1.Container{makeExpectedInitContainer(defaultCliToolsImage, defaultCliToolsDir, defaultMountPath)}
-				pod.Spec.Volumes = []corev1.Volume{makeExpectedVolume()}
-				pod.Spec.Containers[0].VolumeMounts = []corev1.VolumeMount{makeExpectedVolumeMount(defaultMountPath)}
-				pod.Spec.Containers[0].Env = []corev1.EnvVar{makeExpectedEnvVar(defaultMountPath)}
-
-				By("creating expected pod (container-2 should also get mount and env)")
-				expectedPod := makePod("test-pod-6", 2, nil)
-				expectedPod.Spec.InitContainers = []corev1.Container{makeExpectedInitContainer(defaultCliToolsImage, defaultCliToolsDir, defaultMountPath)}
-				expectedPod.Spec.Volumes = []corev1.Volume{makeExpectedVolume()}
-				expectedPod.Spec.Containers[0].VolumeMounts = []corev1.VolumeMount{makeExpectedVolumeMount(defaultMountPath)}
-				expectedPod.Spec.Containers[0].Env = []corev1.EnvVar{makeExpectedEnvVar(defaultMountPath)}
-				expectedPod.Spec.Containers[1].VolumeMounts = []corev1.VolumeMount{makeExpectedVolumeMount(defaultMountPath)}
-				expectedPod.Spec.Containers[1].Env = []corev1.EnvVar{makeExpectedEnvVar(defaultMountPath)}
-
-				By("performing injection")
-				config := &InjectConf{CliToolsDirPath: defaultCliToolsDir, CliToolsImage: defaultCliToolsImage}
-				injector.Inject(pod, config)
-
-				By("verifying the result")
-				Expect(pod).To(Equal(expectedPod))
-			})
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			injector.Inject(tc.pod, tc.config)
+			assert.Equal(t, tc.expectedPod, tc.pod, "The pod after injection should match the expected pod.")
 		})
-	})
+	}
+}
 
-	Describe("CheckFunctions", func() {
-		var (
-			injectedPod *corev1.Pod
-			emptyPod    *corev1.Pod
-		)
+// It's good practice to test helper functions individually.
+func TestToolsInitcontainerInjector_CheckFunctions(t *testing.T) {
+	injector := NewToolsInitcontainerInjector()
 
-		BeforeEach(func() {
-			// Pod with everything injected
-			injectedPod = &corev1.Pod{
-				Spec: corev1.PodSpec{
-					InitContainers: []corev1.Container{{Name: CliToolsInitContainerName}},
-					Volumes:        []corev1.Volume{{Name: CliToolsVolumeName}},
-					Containers: []corev1.Container{
-						{
-							Name:         "main-container",
-							VolumeMounts: []corev1.VolumeMount{{Name: CliToolsVolumeName}},
-							Env:          []corev1.EnvVar{{Name: CliToolsPathEnvName}},
-						},
-					},
+	// Pod with everything injected
+	injectedPod := &corev1.Pod{
+		Spec: corev1.PodSpec{
+			InitContainers: []corev1.Container{{Name: CliToolsInitContainerName}},
+			Volumes:        []corev1.Volume{{Name: CliToolsVolumeName}},
+			Containers: []corev1.Container{
+				{
+					Name:         "main-container",
+					VolumeMounts: []corev1.VolumeMount{{Name: CliToolsVolumeName}},
+					Env:          []corev1.EnvVar{{Name: CliToolsPathEnvName}},
 				},
-			}
+			},
+		},
+	}
 
-			// Empty Pod
-			emptyPod = &corev1.Pod{
-				Spec: corev1.PodSpec{
-					Containers: []corev1.Container{{Name: "main-container"}}, // A container with no deps
-				},
-			}
-		})
+	// Empty Pod
+	emptyPod := &corev1.Pod{
+		Spec: corev1.PodSpec{
+			Containers: []corev1.Container{{Name: "main-container"}}, // A container with no deps
+		},
+	}
 
-		Context("with CheckInitContainerIsExist", func() {
-			It("should find existing init container", func() {
-				result := injector.CheckInitContainerIsExist(injectedPod)
-				Expect(result).To(BeTrue())
-			})
+	// --- Test CheckInitContainerIsExist ---
+	assert.True(t, injector.CheckInitContainerIsExist(injectedPod), "Should find existing init container")
+	assert.False(t, injector.CheckInitContainerIsExist(emptyPod), "Should not find init container in empty pod")
 
-			It("should not find init container in empty pod", func() {
-				result := injector.CheckInitContainerIsExist(emptyPod)
-				Expect(result).To(BeFalse())
-			})
-		})
+	// --- Test CheckVolumeIsExist ---
+	assert.True(t, injector.CheckVolumeIsExist(injectedPod), "Should find existing volume")
+	assert.False(t, injector.CheckVolumeIsExist(emptyPod), "Should not find volume in empty pod")
 
-		Context("CheckVolumeIsExist", func() {
-			It("should find existing volume", func() {
-				result := injector.CheckVolumeIsExist(injectedPod)
-				Expect(result).To(BeTrue())
-			})
+	// --- Test CheckEnvIsExist ---
+	containerWithEnv := &injectedPod.Spec.Containers[0]
+	containerWithoutEnv := &emptyPod.Spec.Containers[0]
+	assert.True(t, injector.CheckEnvIsExist(containerWithEnv), "Should find existing env var")
+	assert.False(t, injector.CheckEnvIsExist(containerWithoutEnv), "Should not find env var in empty container")
+	assert.False(t, injector.CheckEnvIsExist(nil), "Should handle nil container gracefully for env check")
 
-			It("should not find volume in empty pod", func() {
-				result := injector.CheckVolumeIsExist(emptyPod)
-				Expect(result).To(BeFalse())
-			})
-		})
-
-		Context("CheckEnvIsExist", func() {
-			var (
-				containerWithEnv    *corev1.Container
-				containerWithoutEnv *corev1.Container
-			)
-
-			BeforeEach(func() {
-				containerWithEnv = &injectedPod.Spec.Containers[0]
-				containerWithoutEnv = &emptyPod.Spec.Containers[0]
-			})
-
-			It("should find existing env var", func() {
-				result := injector.CheckEnvIsExist(containerWithEnv)
-				Expect(result).To(BeTrue())
-			})
-
-			It("should not find env var in empty container", func() {
-				result := injector.CheckEnvIsExist(containerWithoutEnv)
-				Expect(result).To(BeFalse())
-			})
-
-			It("should handle nil container gracefully", func() {
-				result := injector.CheckEnvIsExist(nil)
-				Expect(result).To(BeFalse())
-			})
-		})
-
-		Context("CheckVolumeMountIsExist", func() {
-			var (
-				containerWithMount    *corev1.Container
-				containerWithoutMount *corev1.Container
-			)
-
-			BeforeEach(func() {
-				containerWithMount = &injectedPod.Spec.Containers[0]
-				containerWithoutMount = &emptyPod.Spec.Containers[0]
-			})
-
-			It("should find existing volume mount in container", func() {
-				result := injector.CheckVolumeMountIsExist(containerWithMount)
-				Expect(result).To(BeTrue())
-			})
-
-			It("should not find volume mount in container", func() {
-				result := injector.CheckVolumeMountIsExist(containerWithoutMount)
-				Expect(result).To(BeFalse())
-			})
-
-			It("should handle nil container gracefully", func() {
-				result := injector.CheckVolumeMountIsExist(nil)
-				Expect(result).To(BeFalse())
-			})
-		})
-	})
-})
+	// --- Test CheckVolumeMountIsExist (FIXED) ---
+	containerWithMount := &injectedPod.Spec.Containers[0]
+	containerWithoutMount := &emptyPod.Spec.Containers[0]
+	assert.True(t, injector.CheckVolumeMountIsExist(containerWithMount), "Should find existing volume mount in container")
+	assert.False(t, injector.CheckVolumeMountIsExist(containerWithoutMount), "Should not find volume mount in container")
+	assert.False(t, injector.CheckVolumeMountIsExist(nil), "Should handle nil container gracefully for volume mount check")
+}
