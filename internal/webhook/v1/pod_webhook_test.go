@@ -71,7 +71,10 @@ var _ = Describe("Pod Webhook", func() {
 		// Create a mock injector to verify the injection logic
 		mockInj = &mockInjector{}
 
-		tempDir = GinkgoT().TempDir()
+		// Setup a temporary directory for the configuration file
+		var err error
+		tempDir, err = os.MkdirTemp("", "webhook-config-test")
+		Expect(err).NotTo(HaveOccurred())
 
 		// Write a predictable config file for the test
 		testConfig := &injector.InjectConf{
@@ -84,7 +87,7 @@ var _ = Describe("Pod Webhook", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		configPath := filepath.Join(tempDir, "config.yaml")
-		err = os.WriteFile(configPath, yamlData, 0644)
+		err = os.WriteFile(configPath, []byte(yamlData), 0644)
 		Expect(err).NotTo(HaveOccurred())
 
 		// Initialize ConfigManager with the temp config path
@@ -103,6 +106,11 @@ var _ = Describe("Pod Webhook", func() {
 				Annotations: make(map[string]string),
 			},
 		}
+	})
+
+	AfterEach(func() {
+		// Clean up the temporary directory
+		os.RemoveAll(tempDir)
 	})
 
 	// This function centralizes the setup of the defaulter for each context
