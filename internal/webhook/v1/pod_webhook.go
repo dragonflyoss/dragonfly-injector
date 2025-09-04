@@ -65,7 +65,6 @@ func NewPodCustomDefaulter() *PodCustomDefaulter {
 		inject_namespace_label: "dragonflyoss-injection",
 		injectors: []Injector{
 			injector.NewProxyEnvInjector(),
-			injector.NewUnixSocketInjector(),
 		},
 	}
 }
