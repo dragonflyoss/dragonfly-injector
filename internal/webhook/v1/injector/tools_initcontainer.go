@@ -24,10 +24,12 @@ func (tii *ToolsInitcontainerInjector) Inject(pod *corev1.Pod, config *InjectCon
 	}
 	// get initContainerImage
 	annotations := pod.Annotations
-	initContainerImage := config.CliToolsImage
+	initContainerImage := ""
 	if annotations != nil {
-		if image, ok := annotations[CliToolsImageAnnotation]; ok {
-			initContainerImage = image
+		if _, ok := annotations[CliToolsImageAnnotation]; ok {
+			initContainerImage = annotations[CliToolsImageAnnotation]
+		} else {
+			initContainerImage = config.CliToolsImage
 		}
 	}
 	// add initContainer
@@ -77,9 +79,6 @@ func (tii *ToolsInitcontainerInjector) Inject(pod *corev1.Pod, config *InjectCon
 
 // check initContainer is exist
 func (tii *ToolsInitcontainerInjector) CheckInitContainerIsExist(pod *corev1.Pod) bool {
-	if pod == nil {
-		return false
-	}
 	ics := pod.Spec.InitContainers
 	for i := range ics {
 		if ics[i].Name == CliToolsInitContainerName {
@@ -91,9 +90,6 @@ func (tii *ToolsInitcontainerInjector) CheckInitContainerIsExist(pod *corev1.Pod
 
 // check volume is exist
 func (tii *ToolsInitcontainerInjector) CheckVolumeIsExist(pod *corev1.Pod) bool {
-	if pod == nil {
-		return false
-	}
 	vs := pod.Spec.Volumes
 	for i := range vs {
 		if vs[i].Name == CliToolsVolumeName {
@@ -104,9 +100,6 @@ func (tii *ToolsInitcontainerInjector) CheckVolumeIsExist(pod *corev1.Pod) bool 
 }
 
 func (tii *ToolsInitcontainerInjector) CheckVolumeMountIsExist(c *corev1.Container) bool {
-	if c == nil {
-		return false
-	}
 	for _, vm := range c.VolumeMounts {
 		if vm.Name == CliToolsVolumeName {
 			return true
@@ -117,9 +110,6 @@ func (tii *ToolsInitcontainerInjector) CheckVolumeMountIsExist(c *corev1.Contain
 
 // check cli tools path env is exist
 func (tii *ToolsInitcontainerInjector) CheckEnvIsExist(c *corev1.Container) bool {
-	if c == nil {
-		return false
-	}
 	env := c.Env
 	for i := range env {
 		if env[i].Name == CliToolsPathEnvName {
