@@ -49,15 +49,15 @@ func envsFromConfig(config *InjectConf) []corev1.EnvVar {
 }
 func injectContainer(c *corev1.Container, envs []corev1.EnvVar) {
 	for _, e := range envs {
-		exist := false
-		// if env exist, skip
+		exsit := false
+		// if env exsit, skip
 		for _, ce := range c.Env {
 			if e.Name == ce.Name {
-				exist = true
+				exsit = true
 				break
 			}
 		}
-		if !exist {
+		if !exsit {
 			c.Env = append(c.Env, e)
 		}
 	}
