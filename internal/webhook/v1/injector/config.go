@@ -15,8 +15,8 @@ const (
 	InjectConfigMapPath string = "/etc/dragonfly-injector"
 
 	// Namespace labels for injection control
-	NamespaceInjectLabelName  string = "dragonflyoss-injection"
-	NamespaceInjectLabelValue string = "enabled"
+	NamespaceInjectLabelName  string = "dragonfly.io/inject"
+	NamespaceInjectLabelValue string = "true"
 
 	// Pod annotation for injection control
 	PodInjectAnnotationName  string = "dragonfly.io/inject"
