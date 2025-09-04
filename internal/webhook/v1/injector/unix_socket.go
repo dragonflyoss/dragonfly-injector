@@ -5,6 +5,28 @@ import corev1 "k8s.io/api/core/v1"
 type UnixSocketInjector struct{}
 
 func NewUnixSocketInjector() *UnixSocketInjector {
+	// TODO: load from config
+	// volumeName := "dfdaemon-socket"
+	// volumePath := "/var/run/dragonfly/dfdaemon.sock"
+	// volumeMountPath := "/var/run/dragonfly/dfdaemon.sock"
+	// hostPathType := corev1.HostPathSocket
+	// dfdaemonSocketVolume := corev1.Volume{
+	// 	Name: volumeName,
+	// 	VolumeSource: corev1.VolumeSource{
+	// 		HostPath: &corev1.HostPathVolumeSource{
+	// 			Path: volumePath,
+	// 			Type: &hostPathType,
+	// 		},
+	// 	},
+	// }
+	// dfdaemonSocketVolumeMount := corev1.VolumeMount{
+	// 	Name:      volumeName,
+	// 	MountPath: volumeMountPath,
+	// }
+	// return &UnixSocketInjector{
+	// 	DfdaemonSocketVolume:      &dfdaemonSocketVolume,
+	// 	DfdaemonSocketVolumeMount: &dfdaemonSocketVolumeMount,
+	// }
 	return &UnixSocketInjector{}
 }
 
