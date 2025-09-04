@@ -60,12 +60,14 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
+  labels:
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: dragonfly-p2p-webhook
   name: dragonfly-p2p-webhook-manager-role
 rules:
 - apiGroups:
   - ""
   resources:
-  - namespaces
   - pods
   verbs:
   - get
@@ -213,7 +215,7 @@ spec:
         - --webhook-cert-path=/tmp/k8s-webhook-server/serving-certs
         command:
         - /manager
-        image: p2p-webhook:latest
+        image: controller:latest
         livenessProbe:
           httpGet:
             path: /healthz
