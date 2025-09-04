@@ -39,7 +39,7 @@ var (
 
 	// projectImage is the name of the image which will be build and loaded
 	// with the code source changes to be tested.
-	projectImage = "d7y.io/dragonfly-p2p-webhook:v0.0.1"
+	projectImage = "example.com/dragonfly-p2p-webhook:v0.0.1"
 )
 
 // TestE2E runs the end-to-end (e2e) test suite for the project. These tests execute in an isolated,
