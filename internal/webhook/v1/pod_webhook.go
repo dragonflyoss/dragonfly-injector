@@ -48,41 +48,14 @@ func SetupPodWebhookWithManager(mgr ctrl.Manager) error {
 // NOTE: The +kubebuilder:object:generate=false marker prevents controller-gen from generating DeepCopy methods,
 // as it is used only for temporary operations and does not need to be deeply copied.
 type PodCustomDefaulter struct {
-	// inject flag
 	inject_anotation string
-
-	// inject envs
-	envs []corev1.EnvVar
+	env_name         string
 }
 
 func NewPodCustomDefaulter() *PodCustomDefaulter {
 	return &PodCustomDefaulter{
 		inject_anotation: "dragonfly.io/inject",
-		envs:             defaultEnvVars(),
-	}
-}
-
-func defaultEnvVars() []corev1.EnvVar {
-	nodeName := corev1.EnvVar{
-		Name: "NODE_NAME",
-		ValueFrom: &corev1.EnvVarSource{
-			FieldRef: &corev1.ObjectFieldSelector{
-				FieldPath: "spec.nodeName",
-			},
-		},
-	}
-	dragonflyProxyPort := corev1.EnvVar{
-		Name:  "DRAGONFLY_PROXY_PORT",
-		Value: "8001",
-	}
-	dragonflyInjectProxy := corev1.EnvVar{
-		Name:  "DRAGONFLY_INJECT_PROXY",
-		Value: "http://$(NODE_NAME):$(DRAGONFLY_PROXY_PORT)",
-	}
-	return []corev1.EnvVar{
-		nodeName,
-		dragonflyProxyPort,
-		dragonflyInjectProxy,
+		env_name:         "TEST",
 	}
 }
 
@@ -107,8 +80,8 @@ func (d *PodCustomDefaulter) applyDefaults(pod *corev1.Pod) {
 
 	if annotations == nil || annotations[d.inject_anotation] != "true" {
 		podlog.Info(
-			"Annotation inject flag not found",
-			"inject_annotation",
+			"Annotation  d.inject_anotation not found",
+			"d.inject_annotation",
 			d.inject_anotation,
 			"annotations",
 			annotations,
@@ -122,6 +95,7 @@ func (d *PodCustomDefaulter) applyDefaults(pod *corev1.Pod) {
 }
 func (d *PodCustomDefaulter) applyEnv(pod *corev1.Pod) {
 	podlog.Info("applyEnv")
+	// 希望设置一个Test环境变量
 	containers := pod.Spec.Containers
 	podlog.Info("Containers", "containers", containers)
 	for i := range containers {
@@ -138,36 +112,17 @@ func (d *PodCustomDefaulter) applyInitContainer(pod *corev1.Pod) {
 
 }
 
-/*
-TODO: Retrieve the port value from the Helm Chart
-env:
-  - name: NODE_NAME # Get scheduled node name via Downward API
-    valueFrom:
-    fieldRef:
-    fieldPath: spec.nodeName
-  - name: DRAGONFLY_PROXY_PORT # Port value obtained from Helm Chart
-    value: "8001" # Assuming Helm Chart sets port to 8001
-  - name: DRAGONFLY_INJECT_PROXY # Constructed proxy address
-    value: "http://$(NODE_NAME):$(DRAGONFLY_PROXY_PORT)"
-*/
-
 func (d *PodCustomDefaulter) applyContainerEnv(c *corev1.Container) {
 	podlog.Info("Container applyContainerEnv", "name", c.Name)
-	// Avoid duplicate additions by checking if the container already
-	// has an env with the same name as the one to be injected
-	for _, de := range d.envs {
-		exists := false
-		for _, ce := range c.Env {
-			if de.Name == ce.Name {
-				podlog.Info("Container has env", "name", de.Name)
-				exists = true
-				break
-			}
-		}
-		// If de and all ce are different, inject
-		if !exists {
-			c.Env = append(c.Env, de)
-			podlog.Info("Container applyContainerEnv", "name", c.Name, "env", de)
+	for _, e := range c.Env {
+		if e.Name == d.env_name {
+			podlog.Info("Container has env", "name", c.Name)
+			return
 		}
 	}
+	podlog.Info("Container has env", "env", c.Env)
+	c.Env = append(c.Env, corev1.EnvVar{
+		Name:  d.env_name,
+		Value: d.env_name,
+	})
 }
