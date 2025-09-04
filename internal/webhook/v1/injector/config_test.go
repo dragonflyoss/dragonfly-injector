@@ -148,7 +148,7 @@ var _ = Describe("Config", func() {
 			By("verifying the default values")
 			Expect(defaultConfig.Enable).To(BeTrue())
 			Expect(defaultConfig.ProxyPort).To(Equal(4001))
-			Expect(defaultConfig.CliToolsImage).To(Equal("dragonflyoss/cli-tools:latest"))
+			Expect(defaultConfig.CliToolsImage).To(Equal("dragonflyoss/toolkits:latest"))
 			Expect(defaultConfig.CliToolsDirPath).To(Equal("/dragonfly-tools"))
 		})
 	})

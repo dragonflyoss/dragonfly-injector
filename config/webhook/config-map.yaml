@@ -6,6 +6,6 @@ data:
   config.yaml: |
     enable: true
     proxy_port: 4001
-    cli_tools_image: dragonflyoss/cli-tools:latest
+    cli_tools_image: dragonflyoss/toolkits:latest
     cli_tools_dir_path: /dragonfly-tools
 

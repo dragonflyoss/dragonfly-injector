@@ -90,13 +90,13 @@ A Kubernetes Mutating Admission Webhook for automatic P2P capability injection i
 
    ```bash
    # Create manifest
-   docker manifest create dragonflyoss/cli-tools:latest \
-   dragonflyoss/cli-tools-amd64-linux:latest \
-   dragonflyoss/cli-tools-arm64-linux:latest
+   docker manifest create dragonflyoss/toolkits:latest \
+   dragonflyoss/toolkits-amd64-linux:latest \
+   dragonflyoss/toolkits-arm64-linux:latest
 
-   docker manifest annotate dragonflyoss/cli-tools-amd64-linux:latest --arch amd64 --os linux
-   docker manifest annotate dragonflyoss/cli-tools-arm64-linux:latest --arch arm64 --os linux
-   docker manifest push dragonflyoss/cli-tools:latest
+   docker manifest annotate dragonflyoss/toolkits-amd64-linux:latest --arch amd64 --os linux
+   docker manifest annotate dragonflyoss/toolkits-arm64-linux:latest --arch arm64 --os linux
+   docker manifest push dragonflyoss/toolkits:latest
    ```
 
    Sample yaml for the injected pod:
@@ -109,7 +109,7 @@ A Kubernetes Mutating Admission Webhook for automatic P2P capability injection i
      annotations:
        dragonfly.io/inject: "true" # Annotation to trigger the Webhook
        # The image and version fields only need to be added if you want to specify non-default values.
-       dragonfly.io/cli-tools-image: "dragonflyoss/cli-tools:v0.0.1"
+       dragonfly.io/cli-tools-image: "dragonflyoss/toolkits:v0.0.1"
    spec:
     containers:
     - command:
@@ -135,7 +135,7 @@ A Kubernetes Mutating Admission Webhook for automatic P2P capability injection i
       - -rf
       - /dragonfly-tools/.
       - /dragonfly-tools-mount/
-      image: dragonflyoss/cli-tools:latest
+      image: dragonflyoss/toolkits:latest
       imagePullPolicy: IfNotPresent
       name: d7y-cli-tools
       volumeMounts:

@@ -33,8 +33,8 @@ const (
 	DfdaemonUnixSockPath       string = "/var/run/dragonfly/dfdaemon.sock" // Default path of dfdaemon unix sock
 
 	// CliTools initContainer control
-	CliToolsImageAnnotation   string = "dragonfly.io/cli-tools-image"  // Get specified cli tools image from this annotation
-	CliToolsImage             string = "dragonflyoss/cli-tools:latest" // Default cli tools image
+	CliToolsImageAnnotation   string = "dragonfly.io/cli-tools-image" // Get specified cli tools image from this annotation
+	CliToolsImage             string = "dragonflyoss/toolkits:latest" // Default cli tools image
 	CliToolsInitContainerName string = "d7y-cli-tools"
 	CliToolsVolumeName        string = CliToolsInitContainerName + "-volume"
 	CliToolsDirPath           string = "/dragonfly-tools"     // Cli tools binary directory path
