@@ -84,7 +84,7 @@ A Kubernetes Mutating Admission Webhook for automatic P2P capability injection i
    ```
 
 4. **Cli Tool Injection**:
-   Considering that many base container images do not include the cli tool (such as `dfget`), and manual installation is inconvenient, this project will solve this problem using an Init Container. The Webhook will automatically add an initContainer to the target Pod. This initContainer is a custom lightweight image available in both amd64 and arm64 architectures, each containing the corresponding architecture's cli tool. The Webhook will also copy the cli tool from this initContainer to a shared volume. Subsequently, the Webhook add the `DRAGONFLY_TOOLS_PATH` environment variable of the application container to add the shared volume directory where cli is located, allowing the application container to execute cli commands directly from the command line without additional user installation or specifying the full path.
+   Considering that many base container images do not include the cli tool (such as `dfget`), and manual installation is inconvenient, this project will solve this problem using an Init Container. The Webhook will automatically add an initContainer to the target Pod. This initContainer is a custom lightweight image available in both amd64 and arm64 architectures, each containing the corresponding architecture's cli tool. The Webhook will also copy the cli tool from this initContainer to a shared volume. Subsequently, the Webhook modifies the `PATH` environment variable of the application container to add the shared volume directory where cli is located, allowing the application container to execute cli commands directly from the command line without additional user installation or specifying the full path.
 
    The InitContainer uses Docker's manifest list to achieve the function of automatically importing the corresponding architecture initContainer, and its build commands are as follows:
 
@@ -111,45 +111,21 @@ A Kubernetes Mutating Admission Webhook for automatic P2P capability injection i
        # The image and version fields only need to be added if you want to specify non-default values.
        dragonfly.io/cli-tools-image: "dragonflyoss/cli-tools:v0.0.1"
    spec:
-    containers:
-    - command:
-      - sh
-      - -c
-      - sleep 3600
-      env:
-      - name: NODE_NAME
-        valueFrom:
-          fieldRef:
-            apiVersion: v1
-            fieldPath: spec.nodeName
-      - name: DRAGONFLY_PROXY_PORT
-        value: "4001"
-      - name: DRAGONFLY_INJECT_PROXY
-        value: http://$(NODE_NAME):$(DRAGONFLY_PROXY_PORT)
-      - name: DRAGONFLY_TOOLS_PATH
-        value: /dragonfly-tools-mount
-      image: busybox:latest
-    initContainers:
-    - command:
-      - cp
-      - -rf
-      - /dragonfly-tools/.
-      - /dragonfly-tools-mount/
-      image: dragonflyoss/cli-tools:latest
-      imagePullPolicy: IfNotPresent
-      name: d7y-cli-tools
-      volumeMounts:
-      - mountPath: /dragonfly-tools-mount
-        name: d7y-cli-tools-volume
-       containers:
-         - name: test-app-container
-           image: test-app-image:latest
-           env:
-             - name: DRAGONFLY_TOOLS_PATH
-               value: "/dragonfly-tools-mount"
-           volumeMounts:
-             - name: dragonfly-tools-volume
-               mountPath: /dragonfly-tools-mount
+     initContainers: # Injected by the webhook
+       - name: cli-tools
+         image: dragonflyoss/cli-tools:v0.0.1
+         volumeMounts:
+           - name: dragonfly-tools-volume
+             mountPath: /dragonfly-tools
+     containers:
+       - name: test-app-container
+         image: test-app-image:latest
+         env:
+           - name: PATH
+             value: "/dragonfly-tools:$(PATH)" # Add to the PATH environment variable
+         volumeMounts:
+           - name: dragonfly-tools-volume
+             mountPath: /dragonfly-tools
      volumes:
        - name: dragonfly-tools-volume
          emptyDir: {}
