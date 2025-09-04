@@ -34,13 +34,13 @@ var podlog = logf.Log.WithName("pod-resource")
 // SetupPodWebhookWithManager registers the webhook for Pod in the manager.
 func SetupPodWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr).For(&corev1.Pod{}).
-		WithDefaulter(NewPodCustomDefaulter()).
+		WithDefaulter(&PodCustomDefaulter{}).
 		Complete()
 }
 
 // TODO(user): EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 
-// +kubebuilder:webhook:path=/mutate--v1-pod,mutating=true,failurePolicy=fail,sideEffects=None,groups="",resources=pods,verbs=create;update,versions=v1,name=mpod-v1.d7y.io,admissionReviewVersions=v1
+// +kubebuilder:webhook:path=/mutate--v1-pod,mutating=true,failurePolicy=fail,sideEffects=None,groups="",resources=pods,verbs=create;update,versions=v1,name=mpod-v1.kb.io,admissionReviewVersions=v1
 
 // PodCustomDefaulter struct is responsible for setting default values on the custom resource of the
 // Kind Pod when those are created or updated.
@@ -48,15 +48,7 @@ func SetupPodWebhookWithManager(mgr ctrl.Manager) error {
 // NOTE: The +kubebuilder:object:generate=false marker prevents controller-gen from generating DeepCopy methods,
 // as it is used only for temporary operations and does not need to be deeply copied.
 type PodCustomDefaulter struct {
-	inject_anotation string
-	env_name         string
-}
-
-func NewPodCustomDefaulter() *PodCustomDefaulter {
-	return &PodCustomDefaulter{
-		inject_anotation: "dragonfly.io/inject",
-		env_name:         "TEST",
-	}
+	// TODO(user): Add more fields as needed for defaulting
 }
 
 var _ webhook.CustomDefaulter = &PodCustomDefaulter{}
@@ -70,59 +62,7 @@ func (d *PodCustomDefaulter) Default(_ context.Context, obj runtime.Object) erro
 	}
 	podlog.Info("Defaulting for Pod", "name", pod.GetName())
 
-	d.applyDefaults(pod)
+	// TODO(user): fill in your defaulting logic.
+
 	return nil
-}
-
-func (d *PodCustomDefaulter) applyDefaults(pod *corev1.Pod) {
-	// check if have annotations
-	annotations := pod.GetAnnotations()
-
-	if annotations == nil || annotations[d.inject_anotation] != "true" {
-		podlog.Info(
-			"Annotation  d.inject_anotation not found",
-			"d.inject_annotation",
-			d.inject_anotation,
-			"annotations",
-			annotations,
-		)
-		return
-	}
-	podlog.Info("Start applyDefaults")
-	d.applyEnv(pod)
-	d.applyUnixSocket(pod)
-	d.applyInitContainer(pod)
-}
-func (d *PodCustomDefaulter) applyEnv(pod *corev1.Pod) {
-	podlog.Info("applyEnv")
-	// 希望设置一个Test环境变量
-	containers := pod.Spec.Containers
-	podlog.Info("Containers", "containers", containers)
-	for i := range containers {
-		c := &containers[i]
-		d.applyContainerEnv(c)
-	}
-}
-
-func (d *PodCustomDefaulter) applyUnixSocket(pod *corev1.Pod) {
-
-}
-
-func (d *PodCustomDefaulter) applyInitContainer(pod *corev1.Pod) {
-
-}
-
-func (d *PodCustomDefaulter) applyContainerEnv(c *corev1.Container) {
-	podlog.Info("Container applyContainerEnv", "name", c.Name)
-	for _, e := range c.Env {
-		if e.Name == d.env_name {
-			podlog.Info("Container has env", "name", c.Name)
-			return
-		}
-	}
-	podlog.Info("Container has env", "env", c.Env)
-	c.Env = append(c.Env, corev1.EnvVar{
-		Name:  d.env_name,
-		Value: d.env_name,
-	})
 }
