@@ -14,7 +14,7 @@ A Kubernetes Mutating Admission Webhook for automatic P2P capability injection i
      kind: Namespace
      metadata:
        labels:
-         dragonfly.io/inject: "true"
+         dragonflyoss-injection: enabled
        name: test-namespace
      ```
 
