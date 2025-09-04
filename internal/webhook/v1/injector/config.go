@@ -42,10 +42,10 @@ const (
 )
 
 type InjectConf struct {
-	Enable          bool   `yaml:"enable" json:"enable"`         // Whether to enable dragonfly injection
-	ProxyPort       int    `yaml:"proxy_port" json:"proxy_port"` // Proxy port of dragonfly proxy(dfdaemon proxy port)
-	CliToolsImage   string `yaml:"cli_tools_image" json:"cli_tools_image"`
-	CliToolsDirPath string `yaml:"cli_tools_dir_path" json:"cli_tools_dir_path"`
+	Enable          bool   `json:"enable"`     // Whether to enable dragonfly injection
+	ProxyPort       int    `json:"proxy_port"` // Proxy port of dragonfly proxy(dfdaemon proxy port)
+	CliToolsImage   string `json:"cli_tools_image"`
+	CliToolsDirPath string `json:"cli_tools_dir_path"`
 }
 
 func NewDefaultInjectConf() *InjectConf {
@@ -63,8 +63,8 @@ type ConfigManager struct {
 	configPath string
 }
 
-func NewConfigManager(injectConfigMapPath string) *ConfigManager {
-	configPath := filepath.Join(injectConfigMapPath, "config.yaml")
+func NewConfigManager() *ConfigManager {
+	configPath := filepath.Join(InjectConfigMapPath, "config.yaml")
 	return &ConfigManager{
 		mu:         sync.RWMutex{},
 		config:     LoadInjectConf(configPath),

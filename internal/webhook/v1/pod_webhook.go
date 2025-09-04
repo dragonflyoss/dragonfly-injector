@@ -35,7 +35,7 @@ var podlog = logf.Log.WithName("pod-resource")
 
 // SetupPodWebhookWithManager registers the webhook for Pod in the manager.
 func SetupPodWebhookWithManager(mgr ctrl.Manager) error {
-	configManager := injector.NewConfigManager(injector.InjectConfigMapPath)
+	configManager := injector.NewConfigManager()
 	if err := mgr.Add(configManager); err != nil {
 		return fmt.Errorf("failed to add config manager to manager: %w", err)
 	}

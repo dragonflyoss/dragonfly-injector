@@ -61,7 +61,7 @@ func (tii *ToolsInitcontainerInjector) Inject(pod *corev1.Pod, config *InjectCon
 
 	// add volumeMount and env
 	for i := range pod.Spec.Containers {
-		if !tii.CheckVolumeMountIsExist(&pod.Spec.Containers[i]) {
+		if !tii.CheckVolumeMountIsExist(pod) {
 			pod.Spec.Containers[i].VolumeMounts = append(pod.Spec.Containers[i].VolumeMounts, corev1.VolumeMount{
 				Name:      CliToolsVolumeName,
 				MountPath: cliToolsVolumeMountPath,
@@ -99,9 +99,10 @@ func (tii *ToolsInitcontainerInjector) CheckVolumeIsExist(pod *corev1.Pod) bool 
 	return false
 }
 
-func (tii *ToolsInitcontainerInjector) CheckVolumeMountIsExist(c *corev1.Container) bool {
-	for _, vm := range c.VolumeMounts {
-		if vm.Name == CliToolsVolumeName {
+func (tii *ToolsInitcontainerInjector) CheckVolumeMountIsExist(pod *corev1.Pod) bool {
+	vm := pod.Spec.Containers[0].VolumeMounts
+	for i := range vm {
+		if vm[i].Name == CliToolsVolumeName {
 			return true
 		}
 	}
