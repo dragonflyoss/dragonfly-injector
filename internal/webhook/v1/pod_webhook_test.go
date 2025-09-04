@@ -21,7 +21,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"d7y.io/dragonfly-p2p-webhook/internal/webhook/v1/injector"
+	"d7y.io/dragonfly-injector/internal/webhook/v1/injector"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"gopkg.in/yaml.v3"

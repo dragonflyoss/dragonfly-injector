@@ -6,8 +6,8 @@ cliVersion: 4.7.0
 domain: d7y.io
 layout:
 - go.kubebuilder.io/v4
-projectName: dragonfly-p2p-webhook
-repo: d7y.io/dragonfly-p2p-webhook
+projectName: dragonfly-injector
+repo: d7y.io/dragonfly-injector
 resources:
 - core: true
   group: core

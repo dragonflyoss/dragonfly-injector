@@ -34,12 +34,12 @@
 - op: add
   path: /spec/template/spec/volumes/- 
   value:
-    name: dragonfly-p2p-webhook-config-volume
+    name: dragonfly-injector-config-volume
     configMap:
       name: inject-config   
 - op: add
   path: /spec/template/spec/containers/0/volumeMounts/- # Add to the end of the volumeMounts array of the first container
   value:
-    name: dragonfly-p2p-webhook-config-volume
-    mountPath: /etc/dragonfly-p2p-webhook       # TODO: the path should be config in internal/webhook/v1/config.go
+    name: dragonfly-injector-config-volume
+    mountPath: /etc/dragonfly-injector       # TODO: the path should be config in internal/webhook/v1/config.go
     readOnly: true

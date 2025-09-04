@@ -1,4 +1,4 @@
-module d7y.io/dragonfly-p2p-webhook
+module d7y.io/dragonfly-injector
 
 go 1.24.0
 

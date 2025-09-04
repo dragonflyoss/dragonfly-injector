@@ -12,7 +12,7 @@ import (
 
 const (
 	// ConfigMap Path, should config in config/default/manager_webhook_patch.yaml
-	InjectConfigMapPath string = "/etc/dragonfly-p2p-webhook"
+	InjectConfigMapPath string = "/etc/dragonfly-injector"
 
 	// Namespace labels for injection control
 	NamespaceInjectLabelName  string = "dragonflyoss-injection"

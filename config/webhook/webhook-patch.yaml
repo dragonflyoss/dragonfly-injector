@@ -9,5 +9,5 @@
             "kube-system",
             "cert-manager",
             "dragonfly-system",
-            "dragonfly-p2p-webhook-system", # TODO: this namespace is webhook self
+            "dragonfly-injector-system", # TODO: this namespace is webhook self
           ]

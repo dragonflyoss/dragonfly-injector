@@ -20,7 +20,7 @@ import (
 	"context"
 	"fmt"
 
-	"d7y.io/dragonfly-p2p-webhook/internal/webhook/v1/injector"
+	"d7y.io/dragonfly-injector/internal/webhook/v1/injector"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"

@@ -5,7 +5,7 @@ apiVersion: cert-manager.io/v1
 kind: Issuer
 metadata:
   labels:
-    app.kubernetes.io/name: dragonfly-p2p-webhook
+    app.kubernetes.io/name: dragonfly-injector
     app.kubernetes.io/managed-by: kustomize
   name: selfsigned-issuer
   namespace: system

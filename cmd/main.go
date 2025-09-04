@@ -37,7 +37,7 @@ import (
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
-	webhookv1 "d7y.io/dragonfly-p2p-webhook/internal/webhook/v1"
+	webhookv1 "d7y.io/dragonfly-injector/internal/webhook/v1"
 	// +kubebuilder:scaffold:imports
 )
 

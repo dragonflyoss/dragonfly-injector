@@ -1,12 +1,12 @@
 # Adds namespace to all resources.
-namespace: dragonfly-p2p-webhook-system
+namespace: dragonfly-injector-system
 
 # Value of this field is prepended to the
 # names of all resources, e.g. a deployment named
 # "wordpress" becomes "alices-wordpress".
 # Note that it should also match with the prefix (text before '-') of the namespace
 # field above.
-namePrefix: dragonfly-p2p-webhook-
+namePrefix: dragonfly-injector-
 
 # Labels to add to all resources and selectors.
 #labels:
@@ -243,4 +243,4 @@ replacements:
       kind: Deployment
       name: controller-manager
     fieldPaths:
-      - spec.template.spec.volumes.[name=dragonfly-p2p-webhook-config-volume].configMap.name
+      - spec.template.spec.volumes.[name=dragonfly-injector-config-volume].configMap.name

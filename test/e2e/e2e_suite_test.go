@@ -25,7 +25,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	"d7y.io/dragonfly-p2p-webhook/test/utils"
+	"d7y.io/dragonfly-injector/test/utils"
 )
 
 var (
@@ -39,7 +39,7 @@ var (
 
 	// projectImage is the name of the image which will be build and loaded
 	// with the code source changes to be tested.
-	projectImage = "d7y.io/dragonfly-p2p-webhook:v0.0.1"
+	projectImage = "d7y.io/dragonfly-injector:v0.0.1"
 )
 
 // TestE2E runs the end-to-end (e2e) test suite for the project. These tests execute in an isolated,
@@ -48,7 +48,7 @@ var (
 // CertManager.
 func TestE2E(t *testing.T) {
 	RegisterFailHandler(Fail)
-	_, _ = fmt.Fprintf(GinkgoWriter, "Starting dragonfly-p2p-webhook integration test suite\n")
+	_, _ = fmt.Fprintf(GinkgoWriter, "Starting dragonfly-injector integration test suite\n")
 	RunSpecs(t, "e2e suite")
 }
 
