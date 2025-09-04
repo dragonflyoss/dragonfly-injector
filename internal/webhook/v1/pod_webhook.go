@@ -40,6 +40,10 @@ func SetupPodWebhookWithManager(mgr ctrl.Manager) error {
 		Complete()
 }
 
+type Injector interface {
+	Inject(pod *corev1.Pod)
+}
+
 // +kubebuilder:webhook:path=/mutate--v1-pod,mutating=true,failurePolicy=fail,sideEffects=None,groups="",resources=pods,verbs=create;update,versions=v1,name=mpod-v1.d7y.io,admissionReviewVersions=v1
 
 // PodCustomDefaulter struct is responsible for setting default values on the custom resource of the
@@ -78,8 +82,6 @@ func (d *PodCustomDefaulter) Default(ctx context.Context, obj runtime.Object) er
 	}
 	podlog.Info("Defaulting for Pod", "name", pod.GetName())
 
-	// TODO: load config from file(configmap)
-	LoadInjectConf()
 	d.applyDefaults(ctx, pod)
 	return nil
 }
@@ -98,10 +100,10 @@ func (d *PodCustomDefaulter) applyDefaults(ctx context.Context, pod *corev1.Pod)
 
 func (d *PodCustomDefaulter) injectRequired(ctx context.Context, pod *corev1.Pod) bool {
 	podlog.Info("func injectRequired start")
-	return d.isNamespaceInjectionEnabled(ctx, pod) || d.isPodInjectionEnabled(ctx, pod)
+	return d.injectNamespace(ctx, pod) || d.injectPod(ctx, pod)
 }
 
-func (d *PodCustomDefaulter) isNamespaceInjectionEnabled(ctx context.Context, pod *corev1.Pod) bool {
+func (d *PodCustomDefaulter) injectNamespace(ctx context.Context, pod *corev1.Pod) bool {
 	podlog.Info("func injectNamespace get pod namespace", "pod", pod.Name)
 	nsName := pod.GetNamespace()
 	ns := &corev1.Namespace{}
@@ -145,7 +147,7 @@ func (d *PodCustomDefaulter) isNamespaceInjectionEnabled(ctx context.Context, po
 	return true
 }
 
-func (d *PodCustomDefaulter) isPodInjectionEnabled(_ context.Context, pod *corev1.Pod) bool {
+func (d *PodCustomDefaulter) injectPod(_ context.Context, pod *corev1.Pod) bool {
 	podlog.Info("func injectPod start", "pod", pod.Name)
 	annotations := pod.GetAnnotations()
 	if len(annotations) == 0 {

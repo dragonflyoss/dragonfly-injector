@@ -1,12 +1,11 @@
 resources:
 - manifests.yaml
 - service.yaml
-- config-map.yaml
 
 configurations:
 - kustomizeconfig.yaml
 
 patches:
-- path: webhook-patch.yaml
+- path: webhook_patch.yaml
   target:
     kind: MutatingWebhookConfiguration

@@ -147,18 +147,6 @@ subjects:
   namespace: dragonfly-p2p-webhook-system
 ---
 apiVersion: v1
-data:
-  config.yaml: |
-    enable: true
-    proxyPort: 8001
-    cliToolsImage: dragonflyoss/cli-tools:latest
-    cliToolsDirPath: /dragonfly-tools
-kind: ConfigMap
-metadata:
-  name: dragonfly-p2p-webhook-dragonfly-p2p-webhook-config
-  namespace: dragonfly-p2p-webhook-system
----
-apiVersion: v1
 kind: Service
 metadata:
   labels:
@@ -260,9 +248,6 @@ spec:
         - mountPath: /tmp/k8s-webhook-server/serving-certs
           name: webhook-certs
           readOnly: true
-        - mountPath: /etc/dragonfly-p2p-webhook/config
-          name: dragonfly-p2p-webhook-config-volume
-          readOnly: true
       securityContext:
         runAsNonRoot: true
         seccompProfile:
@@ -273,9 +258,6 @@ spec:
       - name: webhook-certs
         secret:
           secretName: webhook-server-cert
-      - configMap:
-          name: dragonfly-p2p-webhook-dragonfly-p2p-webhook-config
-        name: dragonfly-p2p-webhook-config-volume
 ---
 apiVersion: cert-manager.io/v1
 kind: Certificate
@@ -344,6 +326,7 @@ webhooks:
       operator: NotIn
       values:
       - kube-system
+      - kube-node-lease
       - kube-public
       - cert-manager
       - dragonfly-system
