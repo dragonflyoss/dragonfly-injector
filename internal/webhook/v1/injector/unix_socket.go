@@ -11,16 +11,16 @@ func NewUnixSocketInjector() *UnixSocketInjector {
 func (usi *UnixSocketInjector) Inject(pod *corev1.Pod, config *InjectConf) {
 	podlog.Info("UnixSocketInjector Inject")
 
-	// check volume exsit
-	volumeExsit := false
+	// check volume exist
+	volumeExist := false
 	for _, v := range pod.Spec.Volumes {
 		if v.Name == DfdaemonUnixSockVolumeName {
-			volumeExsit = true
-			podlog.Info("volume exsit", "volume name", v.Name)
+			volumeExist = true
+			podlog.Info("volume exist", "volume name", v.Name)
 			break
 		}
 	}
-	if !volumeExsit {
+	if !volumeExist {
 		hostPathType := corev1.HostPathSocket
 		dfdaemonSocketVolume := corev1.Volume{
 			Name: DfdaemonUnixSockVolumeName,
@@ -39,15 +39,15 @@ func (usi *UnixSocketInjector) Inject(pod *corev1.Pod, config *InjectConf) {
 }
 
 func (usi *UnixSocketInjector) InjectContainer(c *corev1.Container) {
-	// check volumeMount exsit
-	exsit := false
+	// check volumeMount exist
+	exist := false
 	for _, v := range c.VolumeMounts {
 		if v.Name == DfdaemonUnixSockVolumeName {
-			exsit = true
+			exist = true
 			break
 		}
 	}
-	if !exsit {
+	if !exist {
 		dfdaemonSocketVolumeMount := corev1.VolumeMount{
 			Name:      DfdaemonUnixSockVolumeName,
 			MountPath: DfdaemonUnixSockPath,
