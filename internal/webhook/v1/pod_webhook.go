@@ -20,7 +20,6 @@ import (
 	"context"
 	"fmt"
 
-	"d7y.io/dragonfly-p2p-webhook/internal/webhook/v1/injector"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -48,24 +47,42 @@ func SetupPodWebhookWithManager(mgr ctrl.Manager) error {
 //
 // NOTE: The +kubebuilder:object:generate=false marker prevents controller-gen from generating DeepCopy methods,
 // as it is used only for temporary operations and does not need to be deeply copied.
-type Injector interface {
-	Inject(pod *corev1.Pod)
-}
 type PodCustomDefaulter struct {
 	// inject flag
-	inject_pod_annotation  string
-	inject_namespace_label string
-	// injectors
-	injectors []Injector
+	inject_anotation string
+
+	// inject envs
+	envs []corev1.EnvVar
 }
 
 func NewPodCustomDefaulter() *PodCustomDefaulter {
 	return &PodCustomDefaulter{
-		inject_pod_annotation:  "dragonfly.io/inject",
-		inject_namespace_label: "dragonflyoss-injection",
-		injectors: []Injector{
-			injector.NewProxyEnvInjector(),
+		inject_anotation: "dragonfly.io/inject",
+		envs:             defaultEnvVars(),
+	}
+}
+
+func defaultEnvVars() []corev1.EnvVar {
+	nodeName := corev1.EnvVar{
+		Name: "NODE_NAME",
+		ValueFrom: &corev1.EnvVarSource{
+			FieldRef: &corev1.ObjectFieldSelector{
+				FieldPath: "spec.nodeName",
+			},
 		},
+	}
+	dragonflyProxyPort := corev1.EnvVar{
+		Name:  "DRAGONFLY_PROXY_PORT",
+		Value: "8001",
+	}
+	dragonflyInjectProxy := corev1.EnvVar{
+		Name:  "DRAGONFLY_INJECT_PROXY",
+		Value: "http://$(NODE_NAME):$(DRAGONFLY_PROXY_PORT)",
+	}
+	return []corev1.EnvVar{
+		nodeName,
+		dragonflyProxyPort,
+		dragonflyInjectProxy,
 	}
 }
 
@@ -85,31 +102,72 @@ func (d *PodCustomDefaulter) Default(_ context.Context, obj runtime.Object) erro
 }
 
 func (d *PodCustomDefaulter) applyDefaults(pod *corev1.Pod) {
-	// check if need inject
-	if !d.injectRequired(pod) {
-		podlog.Info("Pod not inject", "name", pod.GetName())
+	// check if have annotations
+	annotations := pod.GetAnnotations()
+
+	if annotations == nil || annotations[d.inject_anotation] != "true" {
+		podlog.Info(
+			"Annotation inject flag not found",
+			"inject_annotation",
+			d.inject_anotation,
+			"annotations",
+			annotations,
+		)
 		return
 	}
-	for _, injector := range d.injectors {
-		injector.Inject(pod)
+	podlog.Info("Start applyDefaults")
+	d.applyEnv(pod)
+	d.applyUnixSocket(pod)
+	d.applyInitContainer(pod)
+}
+func (d *PodCustomDefaulter) applyEnv(pod *corev1.Pod) {
+	podlog.Info("applyEnv")
+	containers := pod.Spec.Containers
+	podlog.Info("Containers", "containers", containers)
+	for i := range containers {
+		c := &containers[i]
+		d.applyContainerEnv(c)
 	}
 }
 
-func (d *PodCustomDefaulter) injectRequired(pod *corev1.Pod) bool {
-	// TODO: check if in inject namespace
-	// namespace := pod.GetNamespace()
+func (d *PodCustomDefaulter) applyUnixSocket(pod *corev1.Pod) {
 
-	// check if has inject annotations
-	annotations := pod.GetAnnotations()
-	if len(annotations) == 0 {
-		return false
+}
+
+func (d *PodCustomDefaulter) applyInitContainer(pod *corev1.Pod) {
+
+}
+
+/*
+TODO: Retrieve the port value from the Helm Chart
+env:
+  - name: NODE_NAME # Get scheduled node name via Downward API
+    valueFrom:
+    fieldRef:
+    fieldPath: spec.nodeName
+  - name: DRAGONFLY_PROXY_PORT # Port value obtained from Helm Chart
+    value: "8001" # Assuming Helm Chart sets port to 8001
+  - name: DRAGONFLY_INJECT_PROXY # Constructed proxy address
+    value: "http://$(NODE_NAME):$(DRAGONFLY_PROXY_PORT)"
+*/
+
+func (d *PodCustomDefaulter) applyContainerEnv(c *corev1.Container) {
+	podlog.Info("Container applyContainerEnv", "name", c.Name)
+	// Avoid duplicate additions by checking if the container already
+	// has an env with the same name as the one to be injected
+	for _, de := range d.envs {
+		exists := false
+		for _, ce := range c.Env {
+			if de.Name == ce.Name {
+				podlog.Info("Container has env", "name", de.Name)
+				exists = true
+				break
+			}
+		}
+		// If de and all ce are different, inject
+		if !exists {
+			c.Env = append(c.Env, de)
+			podlog.Info("Container applyContainerEnv", "name", c.Name, "env", de)
+		}
 	}
-
-	v, ok := annotations[d.inject_pod_annotation]
-
-	if !ok || v != "true" {
-		return false
-	}
-
-	return true
 }
