@@ -41,5 +41,5 @@
   path: /spec/template/spec/containers/0/volumeMounts/- # 在第一个容器的volumeMounts数组末尾添加
   value:
     name: dragonfly-p2p-webhook-config-volume
-    mountPath: /etc/dragonfly-p2p-webhook       # TODO: the path should be config in internal/webhook/v1/config.go
+    mountPath: /etc/dragonfly-p2p-webhook/config # TODO: the path should be config in internal/webhook/v1/config.go
     readOnly: true

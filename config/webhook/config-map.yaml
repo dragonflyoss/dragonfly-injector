@@ -5,7 +5,7 @@ metadata:
 data:
   config.yaml: |
     enable: true
-    proxy_port: 8001
-    cli_tools_image: dragonflyoss/cli-tools:latest
-    cli_tools_dir_path: /dragonfly-tools
+    proxyPort: 8001
+    cliToolsImage: dragonflyoss/cli-tools:latest
+    cliToolsDirPath: /dragonfly-tools
 
