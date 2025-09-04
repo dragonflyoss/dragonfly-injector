@@ -99,8 +99,8 @@ func (d *PodCustomDefaulter) applyDefaults(ctx context.Context, pod *corev1.Pod)
 		return
 	}
 	podlog.Info("Pod inject ")
-	for _, ij := range d.injectors {
-		ij.Inject(pod, config)
+	for _, injector := range d.injectors {
+		injector.Inject(pod, config)
 	}
 }
 
