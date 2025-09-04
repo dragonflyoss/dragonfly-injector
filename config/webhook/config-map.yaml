@@ -1,11 +1,11 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: "inject-config"
+  name: dragonfly-p2p-webhook-config 
 data:
   config.yaml: |
     enable: true
-    proxy_port: 4001
+    proxy_port: 8001
     cli_tools_image: dragonflyoss/cli-tools:latest
     cli_tools_dir_path: /dragonfly-tools
 

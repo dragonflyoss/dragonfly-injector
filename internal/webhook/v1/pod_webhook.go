@@ -35,20 +35,13 @@ var podlog = logf.Log.WithName("pod-resource")
 
 // SetupPodWebhookWithManager registers the webhook for Pod in the manager.
 func SetupPodWebhookWithManager(mgr ctrl.Manager) error {
-	configManager := injector.NewConfigManager()
-	if err := mgr.Add(configManager); err != nil {
-		return fmt.Errorf("failed to add config manager to manager: %w", err)
-	}
-
-	defaulter := NewPodCustomDefaulter(mgr.GetClient(), configManager)
-
 	return ctrl.NewWebhookManagedBy(mgr).For(&corev1.Pod{}).
-		WithDefaulter(defaulter).
+		WithDefaulter(NewPodCustomDefaulter(mgr.GetClient())).
 		Complete()
 }
 
 type Injector interface {
-	Inject(pod *corev1.Pod, config *injector.InjectConf)
+	Inject(pod *corev1.Pod)
 }
 
 // +kubebuilder:webhook:path=/mutate--v1-pod,mutating=true,failurePolicy=fail,sideEffects=None,groups="",resources=pods,verbs=create;update,versions=v1,name=mpod-v1.d7y.io,admissionReviewVersions=v1
@@ -59,17 +52,20 @@ type Injector interface {
 // NOTE: The +kubebuilder:object:generate=false marker prevents controller-gen from generating DeepCopy methods,
 // as it is used only for temporary operations and does not need to be deeply copied.
 type PodCustomDefaulter struct {
-	configManager *injector.ConfigManager
-	kubeClient    client.Client
-	injectors     []Injector
+	injectPodAnnotation  string
+	injectNamespaceLabel string
+	configManager        *injector.ConfigManager
+	kubeClient           client.Client
+	injectors            []Injector
 }
 
 var _ webhook.CustomDefaulter = &PodCustomDefaulter{}
 
-func NewPodCustomDefaulter(c client.Client, configManager *injector.ConfigManager) *PodCustomDefaulter {
+func NewPodCustomDefaulter(c client.Client) *PodCustomDefaulter {
 	return &PodCustomDefaulter{
-		kubeClient:    c,
-		configManager: configManager,
+		injectPodAnnotation:  "dragonfly.io/inject",
+		injectNamespaceLabel: "dragonflyoss-injection",
+		kubeClient:           c,
 		injectors: []Injector{
 			injector.NewProxyEnvInjector(),
 			injector.NewUnixSocketInjector(),
@@ -92,7 +88,6 @@ func (d *PodCustomDefaulter) Default(ctx context.Context, obj runtime.Object) er
 }
 
 func (d *PodCustomDefaulter) applyDefaults(ctx context.Context, pod *corev1.Pod) {
-	config := d.configManager.GetConfig()
 	// check if need inject
 	if !d.injectRequired(ctx, pod) {
 		podlog.Info("Pod not inject", "name", pod.GetName())
@@ -100,7 +95,7 @@ func (d *PodCustomDefaulter) applyDefaults(ctx context.Context, pod *corev1.Pod)
 	}
 	podlog.Info("Pod inject ")
 	for _, injector := range d.injectors {
-		injector.Inject(pod, config)
+		injector.Inject(pod)
 	}
 }
 
@@ -129,18 +124,17 @@ func (d *PodCustomDefaulter) isNamespaceInjectionEnabled(ctx context.Context, po
 		podlog.Info(
 			"namespace missing required injection label",
 			"namespace", nsName,
-			"requiredLabel", injector.NamespaceInjectLabelName,
+			"requiredLabel", d.injectNamespaceLabel,
 			"pod", pod.Name,
 		)
 		return false
 	}
 
-	if v, ok := labels[injector.NamespaceInjectLabelName]; !ok ||
-		v != injector.NamespaceInjectLabelValue {
+	if v, ok := labels[d.injectNamespaceLabel]; !ok || v != "enabled" {
 		podlog.Info(
 			"Namespace skipped injection: label not enabled",
 			"namespace", nsName,
-			"label", fmt.Sprintf("%s: %s", injector.NamespaceInjectLabelName, v),
+			"label", fmt.Sprintf("%s: %s", d.injectNamespaceLabel, v),
 			"pod", pod.Name,
 		)
 		return false
@@ -161,7 +155,7 @@ func (d *PodCustomDefaulter) isPodInjectionEnabled(_ context.Context, pod *corev
 		podlog.Info(
 			"pod missing required injection annotation, skip inject",
 			"pod", pod.Name,
-			"annotation", injector.PodInjectAnnotationName,
+			"annotation", d.injectPodAnnotation,
 		)
 		return false
 	}
@@ -171,12 +165,11 @@ func (d *PodCustomDefaulter) isPodInjectionEnabled(_ context.Context, pod *corev
 		"pod", pod.Name,
 		"annotations", annotations,
 	)
-	if v, ok := annotations[injector.PodInjectAnnotationName]; !ok ||
-		v != injector.PodInjectAnnotationValue {
+	if v, ok := annotations[d.injectPodAnnotation]; !ok || v != "true" {
 		podlog.Info(
 			"pod skipped injection: annotation not true, skip inject",
 			"pod", pod.Name,
-			"annotation", injector.PodInjectAnnotationName,
+			"annotation", d.injectPodAnnotation,
 		)
 		return false
 	}

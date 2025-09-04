@@ -36,7 +36,7 @@
   value:
     name: dragonfly-p2p-webhook-config-volume
     configMap:
-      name: inject-config   
+      name: dragonfly-p2p-webhook-config        # TODO: the name should be same with config/webhook/config-map.yaml
 - op: add
   path: /spec/template/spec/containers/0/volumeMounts/- # 在第一个容器的volumeMounts数组末尾添加
   value:

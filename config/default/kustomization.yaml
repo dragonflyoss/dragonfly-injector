@@ -232,15 +232,3 @@ replacements:
 #     fieldPath: .metadata.name
 #   targets: # Do not remove or uncomment the following scaffold marker; required to generate code for target CRD.
 # +kubebuilder:scaffold:crdkustomizecainjectionname
-
-# custom configmap
-- source:
-    kind: ConfigMap
-    name: inject-config
-    fieldPath: metadata.name
-  targets:
-  - select:
-      kind: Deployment
-      name: controller-manager
-    fieldPaths:
-      - spec.template.spec.volumes.[name=dragonfly-p2p-webhook-config-volume].configMap.name

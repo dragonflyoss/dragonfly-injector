@@ -1,11 +1,9 @@
 package injector
 
 import (
-	"context"
 	"os"
 	"path/filepath"
 	"sync"
-	"time"
 
 	"k8s.io/apimachinery/pkg/util/yaml"
 )
@@ -37,21 +35,22 @@ const (
 	CliToolsImage             string = "dragonflyoss/cli-tools:latest" // Default cli tools image
 	CliToolsInitContainerName string = "d7y-cli-tools"
 	CliToolsVolumeName        string = CliToolsInitContainerName + "-volume"
-	CliToolsDirPath           string = "/dragonfly-tools"     // Cli tools binary directory path
-	CliToolsPathEnvName       string = "DRAGONFLY_TOOLS_PATH" // Path to the directory where binaries are injected into the container.
+	CliToolsDirPath           string = "/dragonfly-tools" // Cli tools binary directory path
 )
 
 type InjectConf struct {
-	Enable          bool   `json:"enable"`     // Whether to enable dragonfly injection
-	ProxyPort       int    `json:"proxy_port"` // Proxy port of dragonfly proxy(dfdaemon proxy port)
+	Enable    bool `json:"enable"`     // Whether to enable dragonfly injection
+	ProxyPort int  `json:"proxy_port"` // Proxy port of dragonfly proxy(dfdaemon proxy port)
+	// ProxyEnvValue   string `json:"proxy_env_value"` // Proxy url: "http://$(" + NodeNameEnvName + "):$(" + ProxyPortEnvName + ")"
 	CliToolsImage   string `json:"cli_tools_image"`
 	CliToolsDirPath string `json:"cli_tools_dir_path"`
 }
 
 func NewDefaultInjectConf() *InjectConf {
 	return &InjectConf{
-		Enable:          true,
-		ProxyPort:       ProxyPortEnvValue,
+		Enable:    true,
+		ProxyPort: ProxyPortEnvValue,
+		// ProxyEnvValue:   fmt.Sprintf("http://$(%s):$(%s)", NodeNameEnvName, ProxyPortEnvName),
 		CliToolsImage:   CliToolsImage,
 		CliToolsDirPath: CliToolsDirPath,
 	}
@@ -63,6 +62,7 @@ type ConfigManager struct {
 	configPath string
 }
 
+// TODO: Add config Manager
 func NewConfigManager() *ConfigManager {
 	configPath := filepath.Join(InjectConfigMapPath, "config.yaml")
 	return &ConfigManager{
@@ -75,35 +75,11 @@ func NewConfigManager() *ConfigManager {
 func (cm *ConfigManager) GetConfig() *InjectConf {
 	cm.mu.RLock()
 	defer cm.mu.RUnlock()
-
-	copiedConf := *cm.config
-	podlog.Info("Get config", "config", copiedConf)
-	return &copiedConf
+	return cm.config
 }
 
-func (cm *ConfigManager) Start(ctx context.Context) error {
-	podlog.Info("Starting config file watcher.")
-
-	ticker := time.NewTicker(15 * time.Second)
-	defer ticker.Stop()
-	for {
-		select {
-		case <-ctx.Done():
-			podlog.Info("Stopping config file watcher.")
-			return nil
-		case <-ticker.C:
-			podlog.Info("Periodic reload check.")
-			cm.reload()
-		}
-	}
-}
-
-func (cm *ConfigManager) reload() {
-	config := LoadInjectConf(cm.configPath)
-	cm.mu.Lock()
-	defer cm.mu.Unlock()
-	cm.config = config
-	podlog.Info("Configuration reloaded successfully.")
+func (cm *ConfigManager) Watch() {
+	return
 }
 
 func LoadInjectConf(injectConfigMapPath string) *InjectConf {
@@ -118,7 +94,8 @@ func LoadInjectConf(injectConfigMapPath string) *InjectConf {
 
 // load inject config from file
 func LoadInjectConfFromFile(injectConfigMapPath string) (*InjectConf, error) {
-	cf, err := os.ReadFile(injectConfigMapPath)
+	cfp := filepath.Join(injectConfigMapPath, "config.yaml")
+	cf, err := os.ReadFile(cfp)
 	if err != nil {
 		return nil, err
 	}
