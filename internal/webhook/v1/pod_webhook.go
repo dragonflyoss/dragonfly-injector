@@ -110,8 +110,9 @@ func (d *PodCustomDefaulter) applyDefaults(ctx context.Context, pod *corev1.Pod)
 
 func (d *PodCustomDefaulter) injectRequired(ctx context.Context, pod *corev1.Pod) bool {
 	podlog.Info("func injectRequired start")
-	if d.isPodInjectionEnabled(ctx, pod) {
-		return true
+	annotations := pod.GetAnnotations()
+	if _, ok := annotations[injector.PodInjectAnnotationName]; ok {
+		return d.isPodInjectionEnabled(ctx, pod)
 	}
 	return d.isNamespaceInjectionEnabled(ctx, pod)
 }
