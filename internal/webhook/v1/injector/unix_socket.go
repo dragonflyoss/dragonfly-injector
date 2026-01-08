@@ -1,26 +1,19 @@
 package injector
 
-import corev1 "k8s.io/api/core/v1"
+import (
+	corev1 "k8s.io/api/core/v1"
+)
 
-type UnixSocketInjector struct{}
+type UnixSocket struct{}
 
-func NewUnixSocketInjector() *UnixSocketInjector {
-	return &UnixSocketInjector{}
+func NewUnixSocket() *UnixSocket {
+	return &UnixSocket{}
 }
 
-func (usi *UnixSocketInjector) Inject(pod *corev1.Pod, config *InjectConf) {
-	podlog.Info("UnixSocketInjector Inject")
+func (us *UnixSocket) Inject(pod *corev1.Pod, config *Config) {
+	logger.Info("UnixSocket inject", "pod namespace", pod.GetNamespace(), "pod name", pod.GetName())
 
-	// check volume exist
-	volumeExist := false
-	for _, v := range pod.Spec.Volumes {
-		if v.Name == DfdaemonUnixSockVolumeName {
-			volumeExist = true
-			podlog.Info("volume exist", "volume name", v.Name)
-			break
-		}
-	}
-	if !volumeExist {
+	if !us.hasVolume(pod) {
 		hostPathType := corev1.HostPathSocket
 		dfdaemonSocketVolume := corev1.Volume{
 			Name: DfdaemonUnixSockVolumeName,
@@ -33,25 +26,36 @@ func (usi *UnixSocketInjector) Inject(pod *corev1.Pod, config *InjectConf) {
 		}
 		pod.Spec.Volumes = append(pod.Spec.Volumes, dfdaemonSocketVolume)
 	}
-	for i := range pod.Spec.Containers {
-		usi.InjectContainer(&pod.Spec.Containers[i])
+
+	for i, c := range pod.Spec.Containers {
+		if !us.hasVolumeMount(&c) {
+			dfdaemonSocketVolumeMount := corev1.VolumeMount{
+				Name:      DfdaemonUnixSockVolumeName,
+				MountPath: DfdaemonUnixSockPath,
+			}
+			pod.Spec.Containers[i].VolumeMounts = append(pod.Spec.Containers[i].VolumeMounts, dfdaemonSocketVolumeMount)
+		}
 	}
 }
 
-func (usi *UnixSocketInjector) InjectContainer(c *corev1.Container) {
-	// check volumeMount exist
-	exist := false
-	for _, v := range c.VolumeMounts {
+// hasVolume checks if the pod has the volume.
+func (us *UnixSocket) hasVolume(pod *corev1.Pod) bool {
+	for _, v := range pod.Spec.Volumes {
 		if v.Name == DfdaemonUnixSockVolumeName {
-			exist = true
-			break
+			return true
 		}
 	}
-	if !exist {
-		dfdaemonSocketVolumeMount := corev1.VolumeMount{
-			Name:      DfdaemonUnixSockVolumeName,
-			MountPath: DfdaemonUnixSockPath,
+
+	return false
+}
+
+// hasVolumeMount checks if the container has the volume mount.
+func (us *UnixSocket) hasVolumeMount(c *corev1.Container) bool {
+	for _, vm := range c.VolumeMounts {
+		if vm.Name == DfdaemonUnixSockVolumeName {
+			return true
 		}
-		c.VolumeMounts = append(c.VolumeMounts, dfdaemonSocketVolumeMount)
 	}
+
+	return false
 }

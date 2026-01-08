@@ -36,10 +36,10 @@ import (
 // It records whether its Inject method has been called.
 type mockInjector struct {
 	called bool
-	config *injector.InjectConf
+	config *injector.Config
 }
 
-func (m *mockInjector) Inject(pod *corev1.Pod, config *injector.InjectConf) {
+func (m *mockInjector) Inject(pod *corev1.Pod, config *injector.Config) {
 	m.called = true
 	m.config = config
 }
@@ -74,9 +74,8 @@ var _ = Describe("Pod Webhook", func() {
 		tempDir = GinkgoT().TempDir()
 
 		// Write a predictable config file for the test
-		testConfig := &injector.InjectConf{
+		testConfig := &injector.Config{
 			Enable:          true,
-			ProxyPort:       8001,
 			CliToolsImage:   "test/cli-tools:v1.0.0",
 			CliToolsDirPath: "/dragonfly-tools",
 		}
@@ -136,7 +135,6 @@ var _ = Describe("Pod Webhook", func() {
 				By("verifying the injector was called")
 				Expect(mockInj.called).To(BeTrue())
 				Expect(mockInj.config).NotTo(BeNil())
-				Expect(mockInj.config.ProxyPort).To(Equal(8001))
 			})
 		})
 
