@@ -8,53 +8,26 @@ import (
 	"time"
 
 	"k8s.io/apimachinery/pkg/util/yaml"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-const (
-	// ConfigMap Path, should config in config/default/manager_webhook_patch.yaml
-	InjectConfigMapPath string = "/etc/dragonfly-injector"
+var logger = log.Log.WithName("dragonfly-inject")
 
-	// Namespace labels for injection control
-	NamespaceInjectLabelName  string = "dragonfly.io/inject"
-	NamespaceInjectLabelValue string = "true"
+// Config is the configuration for dragonfly injection.
+type Config struct {
+	// Whether to enable dragonfly injection function.
+	Enable bool `yaml:"enable" json:"enable"`
 
-	// Pod annotation for injection control
-	PodInjectAnnotationName  string = "dragonfly.io/inject"
-	PodInjectAnnotationValue string = "true"
+	// CliToolsImage is the image of the cli tools container.
+	CliToolsImage string `yaml:"cli_tools_image" json:"cli_tools_image"`
 
-	// Environment variable control
-	NodeNameEnvName   string = "NODE_NAME"
-	ProxyPortEnvName  string = "DRAGONFLY_PROXY_PORT"
-	ProxyPortEnvValue int    = 4001 // Default port of dragonfly proxy
-	ProxyEnvName      string = "DRAGONFLY_INJECT_PROXY"
-
-	// Dfdaemon unix sock volume control
-	DfdaemonUnixSockVolumeName string = "dfdaemon-unix-sock"
-	DfdaemonUnixSockPath       string = "/var/run/dragonfly/dfdaemon.sock" // Default path of dfdaemon unix sock
-
-	// CliTools initContainer control
-	CliToolsImageAnnotation   string = "dragonfly.io/cli-tools-image" // Get specified cli tools image from this annotation
-	CliToolsImage             string = "dragonflyoss/toolkits:latest" // Default cli tools image
-	CliToolsInitContainerName string = "d7y-cli-tools"
-	CliToolsVolumeName        string = CliToolsInitContainerName + "-volume"
-	CliToolsDirPath           string = "/dragonfly-tools"     // Cli tools binary directory path
-	CliToolsPathEnvName       string = "DRAGONFLY_TOOLS_PATH" // Path to the directory where binaries are injected into the container.
-
-	// wait time for config reload
-	ConfigReloadWaitTime time.Duration = 15 * time.Second
-)
-
-type InjectConf struct {
-	Enable          bool   `yaml:"enable" json:"enable"`         // Whether to enable dragonfly injection
-	ProxyPort       int    `yaml:"proxy_port" json:"proxy_port"` // Proxy port of dragonfly proxy(dfdaemon proxy port)
-	CliToolsImage   string `yaml:"cli_tools_image" json:"cli_tools_image"`
+	// CliToolsDirPath is the directory path where the cli tools are located.
 	CliToolsDirPath string `yaml:"cli_tools_dir_path" json:"cli_tools_dir_path"`
 }
 
-func NewDefaultInjectConf() *InjectConf {
-	return &InjectConf{
+func DefaultConfig() *Config {
+	return &Config{
 		Enable:          true,
-		ProxyPort:       ProxyPortEnvValue,
 		CliToolsImage:   CliToolsImage,
 		CliToolsDirPath: CliToolsDirPath,
 	}
@@ -62,7 +35,7 @@ func NewDefaultInjectConf() *InjectConf {
 
 type ConfigManager struct {
 	mu         sync.RWMutex
-	config     *InjectConf
+	config     *Config
 	configPath string
 }
 
@@ -70,65 +43,66 @@ func NewConfigManager(injectConfigMapPath string) *ConfigManager {
 	configPath := filepath.Join(injectConfigMapPath, "config.yaml")
 	return &ConfigManager{
 		mu:         sync.RWMutex{},
-		config:     LoadInjectConf(configPath),
+		config:     LoadConfig(configPath),
 		configPath: configPath,
 	}
 }
 
-func (cm *ConfigManager) GetConfig() *InjectConf {
+func (cm *ConfigManager) GetConfig() *Config {
 	cm.mu.RLock()
 	defer cm.mu.RUnlock()
 
 	copiedConf := *cm.config
-	podlog.Info("Get config", "config", copiedConf)
+	logger.Info("Get config", "config", copiedConf)
 	return &copiedConf
 }
 
 func (cm *ConfigManager) Start(ctx context.Context) error {
-	podlog.Info("Starting config file watcher.")
+	logger.Info("Starting config file watcher")
 
 	ticker := time.NewTicker(ConfigReloadWaitTime)
 	defer ticker.Stop()
 	for {
 		select {
 		case <-ctx.Done():
-			podlog.Info("Stopping config file watcher.")
+			logger.Info("Stopping config file watcher")
 			return nil
 		case <-ticker.C:
-			podlog.Info("Periodic reload check.")
+			logger.Info("Periodic reload check")
 			cm.reload()
 		}
 	}
 }
 
 func (cm *ConfigManager) reload() {
-	config := LoadInjectConf(cm.configPath)
+	config := LoadConfig(cm.configPath)
 	cm.mu.Lock()
 	defer cm.mu.Unlock()
 	cm.config = config
-	podlog.Info("Configuration reloaded successfully.")
+	logger.Info("Configuration reloaded successfully")
 }
 
-func LoadInjectConf(injectConfigMapPath string) *InjectConf {
-	ic, err := LoadInjectConfFromFile(injectConfigMapPath)
+func LoadConfig(injectConfigMapPath string) *Config {
+	c, err := LoadConfigFromFile(injectConfigMapPath)
 	if err != nil {
-		podlog.Error(err, "load config from file failed")
-		podlog.Info("use default config")
-		ic = NewDefaultInjectConf()
+		logger.Error(err, "load config from file failed")
+		logger.Info("use default config")
+		c = DefaultConfig()
 	}
-	return ic
+	return c
 }
 
-// load inject config from file
-func LoadInjectConfFromFile(injectConfigMapPath string) (*InjectConf, error) {
+// LoadConfigFromFile loads config from file.
+func LoadConfigFromFile(injectConfigMapPath string) (*Config, error) {
 	cf, err := os.ReadFile(injectConfigMapPath)
 	if err != nil {
 		return nil, err
 	}
-	injectConf := &InjectConf{}
-	if err := yaml.Unmarshal(cf, injectConf); err != nil {
+
+	config := &Config{}
+	if err := yaml.Unmarshal(cf, config); err != nil {
 		return nil, err
 	}
 
-	return injectConf, nil
+	return config, nil
 }

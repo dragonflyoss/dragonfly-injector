@@ -34,9 +34,8 @@ Default configuration (reload time: 15s):
 ```yaml
 config.yaml: |
   enable: true       # Whether to enable injection
-  proxy_port: 4001   # The proxy port of Dragonfly Dfdaemon
-  cli_tools_image: dragonflyoss/toolkits:latest # The image used for injection
-  cli_tools_dir_path: /dragonfly-tools          # The tools directory path in the image
+  cli_tools_image: dragonflyoss/client:latest # The image used for injection
+  cli_tools_dir_path: /usr/local/bin         # The tools directory path in the image
 ```
 
 For more details, please refer to the [docs/install.md](docs/install.md).

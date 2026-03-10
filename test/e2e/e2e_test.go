@@ -524,18 +524,8 @@ func verifyPodIsRunning(podName, namespace string) func(g Gomega) {
 
 func verifyInjection(podName, namespace string) func(g Gomega) {
 	return func(g Gomega) {
-		// Check for environment variables
-		cmd := exec.Command("kubectl", "exec", podName, "-n", namespace,
-			"--", "env")
-		output, err := utils.Run(cmd)
-		g.Expect(err).NotTo(HaveOccurred())
-		g.Expect(output).To(ContainSubstring(injector.ProxyEnvName),
-			"Should have dragonfly proxy env var")
-		g.Expect(output).To(ContainSubstring(injector.CliToolsPathEnvName),
-			"Should have dragonfly tools path env var")
-
-		// Check for volume mounts and init container
-		cmd = exec.Command("kubectl", "get", "pod", podName, "-n", namespace,
+		// Check for volume mounts and init container.
+		cmd := exec.Command("kubectl", "get", "pod", podName, "-n", namespace,
 			"-o", "json")
 		podJson, err := utils.Run(cmd)
 		g.Expect(err).NotTo(HaveOccurred())

@@ -31,11 +31,11 @@ import (
 
 // nolint:unused
 // log is for logging in this package.
-var podlog = logf.Log.WithName("pod-resource")
+var logger = logf.Log.WithName("pod-resource")
 
 // SetupPodWebhookWithManager registers the webhook for Pod in the manager.
 func SetupPodWebhookWithManager(mgr ctrl.Manager) error {
-	configManager := injector.NewConfigManager(injector.InjectConfigMapPath)
+	configManager := injector.NewConfigManager(injector.ConfigMapPath)
 	if err := mgr.Add(configManager); err != nil {
 		return fmt.Errorf("failed to add config manager to manager: %w", err)
 	}
@@ -48,7 +48,7 @@ func SetupPodWebhookWithManager(mgr ctrl.Manager) error {
 }
 
 type Injector interface {
-	Inject(pod *corev1.Pod, config *injector.InjectConf)
+	Inject(pod *corev1.Pod, config *injector.Config)
 }
 
 // +kubebuilder:webhook:path=/mutate--v1-pod,mutating=true,failurePolicy=fail,sideEffects=None,groups="",resources=pods,verbs=create;update,versions=v1,name=mpod-v1.d7y.io,admissionReviewVersions=v1
@@ -71,9 +71,8 @@ func NewPodCustomDefaulter(c client.Client, configManager *injector.ConfigManage
 		kubeClient:    c,
 		configManager: configManager,
 		injectors: []Injector{
-			injector.NewProxyEnvInjector(),
-			injector.NewUnixSocketInjector(),
-			injector.NewToolsInitcontainerInjector(),
+			injector.NewUnixSocket(),
+			injector.NewTools(),
 		},
 	}
 }
@@ -85,7 +84,7 @@ func (d *PodCustomDefaulter) Default(ctx context.Context, obj runtime.Object) er
 	if !ok {
 		return fmt.Errorf("expected an Pod object but got %T", obj)
 	}
-	podlog.Info("Defaulting for Pod", "name", pod.GetName())
+	logger.Info("Defaulting for Pod", "pod namespace", pod.GetNamespace(), "pod name", pod.GetName())
 
 	d.applyDefaults(ctx, pod)
 	return nil
@@ -94,99 +93,97 @@ func (d *PodCustomDefaulter) Default(ctx context.Context, obj runtime.Object) er
 func (d *PodCustomDefaulter) applyDefaults(ctx context.Context, pod *corev1.Pod) {
 	config := d.configManager.GetConfig()
 	if config == nil || !config.Enable {
-		podlog.Info("Config disabled, skip inject", "name", pod.GetName())
+		logger.Info("Config disabled, skip inject", "pod namespace", pod.GetNamespace(), "pod name", pod.GetName())
 		return
 	}
-	// check if need inject
-	if !d.injectRequired(ctx, pod) {
-		podlog.Info("Pod not inject", "name", pod.GetName())
+
+	// Check if need inject.
+	if !d.needInject(ctx, pod) {
+		logger.Info("Pod not inject", "pod namespace", pod.GetNamespace(), "pod name", pod.GetName())
 		return
 	}
-	podlog.Info("Pod inject ")
+
 	for _, ij := range d.injectors {
 		ij.Inject(pod, config)
 	}
 }
 
-func (d *PodCustomDefaulter) injectRequired(ctx context.Context, pod *corev1.Pod) bool {
-	podlog.Info("func injectRequired start")
+func (d *PodCustomDefaulter) needInject(ctx context.Context, pod *corev1.Pod) bool {
 	annotations := pod.GetAnnotations()
 	if _, ok := annotations[injector.PodInjectAnnotationName]; ok {
 		return d.isPodInjectionEnabled(ctx, pod)
 	}
+
 	return d.isNamespaceInjectionEnabled(ctx, pod)
 }
 
 func (d *PodCustomDefaulter) isNamespaceInjectionEnabled(ctx context.Context, pod *corev1.Pod) bool {
-	podlog.Info("func injectNamespace get pod namespace", "pod", pod.Name)
-	nsName := pod.GetNamespace()
+	namespace := pod.GetNamespace()
 	ns := &corev1.Namespace{}
-	if err := d.kubeClient.Get(ctx, client.ObjectKey{Name: nsName}, ns); err != nil {
-		podlog.Error(err, "failed to get namespace", "namespace", nsName)
+	if err := d.kubeClient.Get(ctx, client.ObjectKey{Name: namespace}, ns); err != nil {
+		logger.Error(err, "failed to get namespace", "namespace", namespace)
 		return false
 	}
 
 	labels := ns.GetLabels()
-	podlog.Info(
-		"func injectNamespace pod namespace lables",
-		"pod", pod.Name,
+	logger.Info(
+		"pod namespace labels",
+		"namespace", namespace,
+		"pod", pod.GetName(),
 		"labels", labels,
 	)
 	if len(labels) == 0 {
-		podlog.Info(
+		logger.Info(
 			"namespace missing required injection label",
-			"namespace", nsName,
+			"namespace", namespace,
 			"requiredLabel", injector.NamespaceInjectLabelName,
-			"pod", pod.Name,
+			"pod", pod.GetName(),
 		)
 		return false
 	}
 
 	if v, ok := labels[injector.NamespaceInjectLabelName]; !ok ||
 		v != injector.NamespaceInjectLabelValue {
-		podlog.Info(
-			"Namespace skipped injection: label not enabled",
-			"namespace", nsName,
+		logger.Info(
+			"namespace skipped injection: label not enabled",
+			"namespace", namespace,
 			"label", fmt.Sprintf("%s: %s", injector.NamespaceInjectLabelName, v),
-			"pod", pod.Name,
+			"pod", pod.GetName(),
 		)
 		return false
 	}
-	podlog.Info(
-		"func injectNamespace check success",
-		"namespace", nsName,
-		"labels", labels,
-		"pod", pod.Name,
-	)
+
 	return true
 }
 
 func (d *PodCustomDefaulter) isPodInjectionEnabled(_ context.Context, pod *corev1.Pod) bool {
-	podlog.Info("func injectPod start", "pod", pod.Name)
 	annotations := pod.GetAnnotations()
 	if len(annotations) == 0 {
-		podlog.Info(
+		logger.Info(
 			"pod missing required injection annotation, skip inject",
-			"pod", pod.Name,
+			"namespace", pod.GetNamespace(),
+			"pod", pod.GetName(),
 			"annotation", injector.PodInjectAnnotationName,
 		)
 		return false
 	}
 
-	podlog.Info(
-		"func injectPod get annotations",
-		"pod", pod.Name,
+	logger.Info(
+		"pod annotations",
+		"namespace", pod.GetNamespace(),
+		"pod", pod.GetName(),
 		"annotations", annotations,
 	)
 	if v, ok := annotations[injector.PodInjectAnnotationName]; !ok ||
 		v != injector.PodInjectAnnotationValue {
-		podlog.Info(
+		logger.Info(
 			"pod skipped injection: annotation not true, skip inject",
-			"pod", pod.Name,
+			"namespace", pod.GetNamespace(),
+			"pod", pod.GetName(),
 			"annotation", injector.PodInjectAnnotationName,
 		)
 		return false
 	}
-	podlog.Info("func injectPod success", "pod", pod.Name)
+
 	return true
 }

@@ -9,11 +9,11 @@ import (
 
 var _ = Describe("UnixSocketInjector", func() {
 	var (
-		injector *UnixSocketInjector
+		injector *UnixSocket
 	)
 
 	BeforeEach(func() {
-		injector = NewUnixSocketInjector()
+		injector = NewUnixSocket()
 	})
 
 	// Helper function to create the expected Volume
@@ -60,7 +60,7 @@ var _ = Describe("UnixSocketInjector", func() {
 			}
 
 			By("performing injection")
-			injector.Inject(pod, &InjectConf{})
+			injector.Inject(pod, &Config{})
 
 			By("verifying the result")
 			Expect(pod).To(Equal(expectedPod))
@@ -88,7 +88,7 @@ var _ = Describe("UnixSocketInjector", func() {
 			}
 
 			By("performing injection")
-			injector.Inject(pod, &InjectConf{})
+			injector.Inject(pod, &Config{})
 
 			By("verifying the result")
 			Expect(pod).To(Equal(expectedPod))
@@ -130,7 +130,7 @@ var _ = Describe("UnixSocketInjector", func() {
 			}
 
 			By("performing injection")
-			injector.Inject(pod, &InjectConf{})
+			injector.Inject(pod, &Config{})
 
 			By("verifying the result")
 			Expect(pod).To(Equal(expectedPod))
@@ -168,7 +168,7 @@ var _ = Describe("UnixSocketInjector", func() {
 			}
 
 			By("performing injection")
-			injector.Inject(pod, &InjectConf{})
+			injector.Inject(pod, &Config{})
 
 			By("verifying the result")
 			Expect(pod).To(Equal(expectedPod))
@@ -194,7 +194,7 @@ var _ = Describe("UnixSocketInjector", func() {
 			}
 
 			By("performing injection")
-			injector.Inject(pod, &InjectConf{})
+			injector.Inject(pod, &Config{})
 
 			By("verifying the result")
 			Expect(pod).To(Equal(expectedPod))
@@ -238,7 +238,7 @@ var _ = Describe("UnixSocketInjector", func() {
 			}
 
 			By("performing injection")
-			injector.Inject(pod, &InjectConf{})
+			injector.Inject(pod, &Config{})
 
 			By("verifying the result")
 			Expect(pod).To(Equal(expectedPod))
