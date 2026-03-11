@@ -1,0 +1,74 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Generate install manifest
+        run: |
+          # Replace the image tag in kustomize config with the release tag
+          VERSION=${GITHUB_REF#refs/tags/}
+          make build-installer IMG=dragonflyoss/dragonfly-injector:${VERSION#v}
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          # Get the previous tag
+          PREV_TAG=$(git tag --sort=-v:refname | head -n 2 | tail -n 1)
+          CURRENT_TAG=${GITHUB_REF#refs/tags/}
+
+          echo "## What's Changed" > changelog.md
+          echo "" >> changelog.md
+
+          if [ -z "$PREV_TAG" ] || [ "$PREV_TAG" = "$CURRENT_TAG" ]; then
+            echo "Initial release." >> changelog.md
+          else
+            # Generate changelog from git log
+            echo "### Changes since ${PREV_TAG}" >> changelog.md
+            echo "" >> changelog.md
+            git log ${PREV_TAG}..${CURRENT_TAG} --pretty=format:"- %s (%h)" --no-merges >> changelog.md
+            echo "" >> changelog.md
+          fi
+
+          echo "" >> changelog.md
+          echo "## Docker Image" >> changelog.md
+          echo "" >> changelog.md
+          echo '```' >> changelog.md
+          echo "docker pull dragonflyoss/dragonfly-injector:${CURRENT_TAG#v}" >> changelog.md
+          echo '```' >> changelog.md
+
+          echo "" >> changelog.md
+          echo "## Installation" >> changelog.md
+          echo "" >> changelog.md
+          echo '```' >> changelog.md
+          echo "kubectl apply -f https://github.com/${{ github.repository }}/releases/download/${CURRENT_TAG}/install.yaml" >> changelog.md
+          echo '```' >> changelog.md
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          body_path: changelog.md
+          draft: false
+          prerelease: ${{ contains(github.ref, '-rc') || contains(github.ref, '-alpha') || contains(github.ref, '-beta') }}
+          files: |
+            dist/install.yaml
+          make_latest: ${{ !contains(github.ref, '-rc') && !contains(github.ref, '-alpha') && !contains(github.ref, '-beta') }}

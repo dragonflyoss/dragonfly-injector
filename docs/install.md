@@ -21,25 +21,25 @@
 
     ```sh
     make docker-build
-    # Use arg `IMG` to specify the image name and tag, default is `d7y.io/dragonfly-injector:latest`.
+    # Use arg `IMG` to specify the image name and tag, default is `dragonflyoss/injector:latest`.
     # Example: `make docker-build IMG=example.com/dragonfly-p2p-webhook:v0.0.1 `
     ```
 
     > If you use kind to deploy the cluster, you need to load the image into the cluster.
-    > Example: `kind load docker-image d7y.io/dragonfly-injector:latest`
+    > Example: `kind load docker-image dragonflyoss/injector:latest`
 
 4. Configure Webhook
     You can modify the webhook configuration by editing the configuration file at `config/webhook/config-map.yaml`.
 5. Deploy the dragonfly-injector
 
     ```sh
-    make deploy IMG=d7y.io/dragonfly-injector:latest
+    make deploy IMG=dragonflyoss/injector:latest
     ```
 
 6. Verify the deployment
 
     ```sh
-    kubectl -n dragonfly-injector-system get deployment dragonfly-injector-controller-manager
+    kubectl -n dragonfly-system get deployment dragonfly-injector-controller-manager
     ```
 
 7. Test the deployment
@@ -80,20 +80,24 @@
 
     ```yaml
     initContainers:
-      - command:
-          - cp
-          - -rf
-          - /dragonfly-tools/.
-          - /dragonfly-tools-mount/
-        image: dragonflyoss/toolkits:latest
-        imagePullPolicy: IfNotPresent
-        name: d7y-cli-tools
-        resources: {}
-        terminationMessagePath: /dev/termination-log
-        terminationMessagePolicy: File
-        volumeMounts:
-          - mountPath: /dragonfly-tools-mount
-            name: d7y-cli-tools-volume
+    - command:
+      - install
+      - -D
+      - /usr/local/bin/dfget
+      - /usr/local/bin/dfcache
+      - /usr/local/bin/dfstore
+      - /usr/local/bin/dfdaemon
+      - -t
+      - /dragonfly/bin/
+      image: dragonflyoss/client:v1.2.0
+      imagePullPolicy: IfNotPresent
+      name: dragonfly-binaries
+      resources: {}
+      terminationMessagePath: /dev/termination-log
+      terminationMessagePolicy: File
+      volumeMounts:
+      - mountPath: /dragonfly/bin
+        name: dragonfly-binaries-volume
     ```
 
 ## Undeploy
@@ -101,29 +105,3 @@
 ```sh
 make undeploy
 ```
-
-## Project Distribution
-
-Following the options to release and provide this solution to the users.
-
-### By providing a bundle with all YAML files
-
-1. Build the installer for the image built and published in the registry:
-
-    ```sh
-    make build-installer IMG=<some-registry>/dragonfly-injector:tag
-    ```
-
-    **NOTE:** The makefile target mentioned above generates an 'install.yaml'
-    file in the dist directory. This file contains all the resources built
-    with Kustomize, which are necessary to install this project without its
-    dependencies.
-
-2. Using the installer
-
-    Users can just run 'kubectl apply -f <URL for YAML BUNDLE>' to install
-    the project, i.e.:
-
-    ```sh
-    kubectl apply -f dist/install.yaml
-    ```

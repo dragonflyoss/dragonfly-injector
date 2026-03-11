@@ -1,18 +1,18 @@
 /*
-Copyright 2025.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
+ *     Copyright 2026 The Dragonfly Authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 // +kubebuilder:rbac:groups="",resources=namespaces;pods,verbs=get;list;watch
 package v1
 
@@ -72,7 +72,7 @@ func NewPodCustomDefaulter(c client.Client, configManager *injector.ConfigManage
 		configManager: configManager,
 		injectors: []Injector{
 			injector.NewUnixSocket(),
-			injector.NewTools(),
+			injector.NewBinaries(),
 		},
 	}
 }
@@ -92,7 +92,7 @@ func (d *PodCustomDefaulter) Default(ctx context.Context, obj runtime.Object) er
 
 func (d *PodCustomDefaulter) applyDefaults(ctx context.Context, pod *corev1.Pod) {
 	config := d.configManager.GetConfig()
-	if config == nil || !config.Enable {
+	if config == nil {
 		logger.Info("Config disabled, skip inject", "pod namespace", pod.GetNamespace(), "pod name", pod.GetName())
 		return
 	}
