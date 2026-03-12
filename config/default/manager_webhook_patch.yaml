@@ -32,11 +32,11 @@
 
 # Add configmap volume
 - op: add
-  path: /spec/template/spec/volumes/- 
+  path: /spec/template/spec/volumes/-
   value:
     name: dragonfly-injector-config-volume
     configMap:
-      name: inject-config   
+      name: config
 - op: add
   path: /spec/template/spec/containers/0/volumeMounts/- # Add to the end of the volumeMounts array of the first container
   value:

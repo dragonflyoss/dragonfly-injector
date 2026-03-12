@@ -1,3 +1,19 @@
+/*
+ *     Copyright 2026 The Dragonfly Authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package injector
 
 import (
@@ -5,8 +21,8 @@ import (
 )
 
 const (
-	// ConfigReloadWaitTime is wait time for config reload.
-	ConfigReloadWaitTime time.Duration = 30 * time.Second
+	// ConfigReloadInterval is the wait time for config reload.
+	ConfigReloadInterval time.Duration = 30 * time.Second
 
 	// Domain is the domain name of the injector.
 	Domain string = "dragonfly.io"
@@ -23,20 +39,20 @@ const (
 	PodInjectAnnotationValue string = "true"
 
 	// Dfdaemon unix sock config.
-	DfdaemonUnixSockVolumeName string = "dfdaemon-unix-sock"
-	DfdaemonUnixSockPath       string = "/var/run/dragonfly/dfdaemon.sock" // Default path of dfdaemon unix sock
+	SkipUnixSockInjectAnnotationName  string = Domain + "/" + "skip-unix-sock-inject"
+	SkipUnixSockInjectAnnotationValue string = "true"
+	DfdaemonUnixSockVolumeName        string = "dfdaemon-unix-sock"
+	DfdaemonUnixSockPath              string = "/var/run/dragonfly/dfdaemon.sock"
 
-	// CliTools initContainer control.
-	CliToolsImage           string = "dragonflyoss/client:latest"     // Default cli tools image
-	CliToolsImageAnnotation string = Domain + "/" + "cli-tools-image" // Get specified cli tools image from this annotation
+	InitContainerImageAnnotation string = Domain + "/" + "init-container-image"
+	InitContainerName            string = "dragonfly-binaries"
+	BinaryVolumeName             string = InitContainerName + "-" + "volume"
+	BinaryVolumeMountPath        string = "/dragonfly/bin"
+	BinaryDirPath                string = "/usr/local/bin"
+	BinaryMountDirPath           string = "/usr/local/bin"
 
-	CliToolsInitContainerName string = "d7y-cli-tools"
-	CliToolsVolumeName        string = CliToolsInitContainerName + "-" + "volume"
-	CliToolsVolumeMountPath   string = "/d7y/bin"
-	CliToolsDirPath           string = "/usr/local/bin" // Default cli tools binary directory path in cli tools image
-	CliToolsMountDirPath      string = "/usr/local/bin"
-
-	CliToolsDfgetName   string = "dfget"
-	CliToolsDfcacheName string = "dfcache"
-	CliToolsDfstoreName string = "dfstore"
+	DfgetBinaryName    string = "dfget"
+	DfcacheBinaryName  string = "dfcache"
+	DfstoreBinaryName  string = "dfstore"
+	DfdaemonBinaryName string = "dfdaemon"
 )

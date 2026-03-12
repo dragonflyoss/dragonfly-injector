@@ -20,22 +20,26 @@ There are two ways to configure the injector:
 
 **Method 1: Edit the configuration file directly**
 
-Before `kubectl apply`, edit the ConfigMap named `dragonfly-injector-inject-config` in `dist/install.yaml`.
+Before `kubectl apply`, edit the ConfigMap named `dragonfly-injector-config` in `dist/install.yaml`.
 
 **Method 2: Use kubectl to edit the config**
 
-After `kubectl apply`, you can edit the ConfigMap named `dragonfly-injector-inject-config` in `dragonfly-injector-system` namespace.
+After `kubectl apply`, you can edit the ConfigMap named `dragonfly-injector-config` in `dragonfly-system` namespace.
 
 ```sh
-kubectl -n dragonfly-injector-system edit configmap dragonfly-injector-inject-config
+kubectl -n dragonfly-system edit configmap dragonfly-injector-config
 ```
 
 Default configuration (reload time: 15s):
 ```yaml
 config.yaml: |
-  enable: true       # Whether to enable injection
-  cli_tools_image: dragonflyoss/client:latest # The image used for injection
-  cli_tools_dir_path: /usr/local/bin         # The tools directory path in the image
+  initContainerImage:
+    registry: docker.io
+    repository: dragonflyoss/client
+    tag: latest
+    digest: ''
+    pullPolicy: IfNotPresent
+    pullSecrets: []
 ```
 
 For more details, please refer to the [docs/install.md](docs/install.md).

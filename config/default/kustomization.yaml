@@ -1,5 +1,5 @@
 # Adds namespace to all resources.
-namespace: dragonfly-injector-system
+namespace: dragonfly-system
 
 # Value of this field is prepended to the
 # names of all resources, e.g. a deployment named
@@ -236,7 +236,7 @@ replacements:
 # custom configmap
 - source:
     kind: ConfigMap
-    name: inject-config
+    name: config
     fieldPath: metadata.name
   targets:
   - select:

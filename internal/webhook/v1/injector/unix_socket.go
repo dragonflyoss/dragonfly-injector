@@ -1,3 +1,19 @@
+/*
+ *     Copyright 2026 The Dragonfly Authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package injector
 
 import (
@@ -12,6 +28,11 @@ func NewUnixSocket() *UnixSocket {
 
 func (us *UnixSocket) Inject(pod *corev1.Pod, config *Config) {
 	logger.Info("UnixSocket inject", "pod namespace", pod.GetNamespace(), "pod name", pod.GetName())
+
+	if pod.Annotations != nil && pod.Annotations[SkipUnixSockInjectAnnotationName] == SkipUnixSockInjectAnnotationValue {
+		logger.Info("UnixSocket inject skipped", "pod namespace", pod.GetNamespace(), "pod name", pod.GetName())
+		return
+	}
 
 	if !us.hasVolume(pod) {
 		hostPathType := corev1.HostPathSocket
