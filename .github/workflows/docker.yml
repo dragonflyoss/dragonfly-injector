@@ -31,7 +31,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: dragonflyoss/dragonfly-injector
+          images: dragonflyoss/injector
           tags: |
             # For tag events: v1.2.3 -> 1.2.3, latest
             type=semver,pattern={{version}}
