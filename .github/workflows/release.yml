@@ -27,7 +27,7 @@ jobs:
         run: |
           # Replace the image tag in kustomize config with the release tag
           VERSION=${GITHUB_REF#refs/tags/}
-          make build-installer IMG=dragonflyoss/dragonfly-injector:${VERSION#v}
+          make build-installer IMG=dragonflyoss/injector:${VERSION#v}
 
       - name: Generate changelog
         id: changelog
@@ -53,7 +53,7 @@ jobs:
           echo "## Docker Image" >> changelog.md
           echo "" >> changelog.md
           echo '```' >> changelog.md
-          echo "docker pull dragonflyoss/dragonfly-injector:${CURRENT_TAG#v}" >> changelog.md
+          echo "docker pull dragonflyoss/injector:${CURRENT_TAG#v}" >> changelog.md
           echo '```' >> changelog.md
 
           echo "" >> changelog.md
