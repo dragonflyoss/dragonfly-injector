@@ -185,7 +185,7 @@ func main() {
 		LeaderElectionID:       "f69c7973.d7y.io",
 		// LeaderElectionReleaseOnCancel defines if the leader should step down voluntarily
 		// when the Manager ends. This requires the binary to immediately end when the
-		// Manager is stopped, otherwise, this setting is unsafe. Setting this significantly
+		// Manager is stopped; otherwise, this setting is unsafe. Setting this significantly
 		// speeds up voluntary leader transitions as the new leader don't have to wait
 		// LeaseDuration time first.
 		//
