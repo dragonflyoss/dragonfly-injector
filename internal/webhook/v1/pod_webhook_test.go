@@ -186,7 +186,7 @@ var _ = Describe("Pod Webhook", func() {
 		})
 
 		Context("and injection is not required", func() {
-			It("should not inject the pod if neither label nor annotation is present", func() {
+			It("should not inject the pod unless label or annotation is present", func() {
 				By("creating a namespace without the injection label")
 				unlabeledNs := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: testNsName}}
 				setupDefaulter(unlabeledNs)
