@@ -2,11 +2,12 @@ name: E2E Tests
 
 on:
   push:
+    branches: [main, release-*]
   pull_request:
+    branches: [main, release-*]
 
 jobs:
-  test-e2e:
-    name: Run on Ubuntu
+  e2e_tests:
     runs-on: ubuntu-latest
     steps:
       - name: Clone the code

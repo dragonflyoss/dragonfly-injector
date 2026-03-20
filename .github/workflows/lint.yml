@@ -2,11 +2,13 @@ name: Lint
 
 on:
   push:
+    branches: [main, release-*]
   pull_request:
+    branches: [main, release-*]
 
 jobs:
   lint:
-    name: Run on Ubuntu
+    name: Lint
     runs-on: ubuntu-latest
     steps:
       - name: Clone the code

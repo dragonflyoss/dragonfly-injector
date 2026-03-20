@@ -3,14 +3,14 @@ name: Release
 on:
   push:
     tags:
-      - "v*"
+      - 'v*'
 
 permissions:
   contents: write
 
 jobs:
   release:
-    name: Create GitHub Release
+    name: Release
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
