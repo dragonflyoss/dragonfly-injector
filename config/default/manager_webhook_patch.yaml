@@ -41,5 +41,5 @@
   path: /spec/template/spec/containers/0/volumeMounts/- # Add to the end of the volumeMounts array of the first container
   value:
     name: dragonfly-injector-config-volume
-    mountPath: /etc/dragonfly-injector       # TODO: the path should be config in internal/webhook/v1/config.go
+    mountPath: /etc/dragonfly       # TODO: the path should be config in internal/webhook/v1/config.go
     readOnly: true

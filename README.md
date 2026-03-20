@@ -32,7 +32,7 @@ kubectl -n dragonfly-system edit configmap dragonfly-injector-config
 
 Default configuration (reload time: 15s):
 ```yaml
-config.yaml: |
+injector.yaml: |
   initContainerImage:
     registry: docker.io
     repository: dragonflyoss/client

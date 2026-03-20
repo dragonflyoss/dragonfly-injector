@@ -277,7 +277,7 @@ var _ = Describe("Config", func() {
 		Context("with basic functionality", func() {
 			BeforeEach(func() {
 				By("creating initial configuration")
-				configPath := filepath.Join(tempDir, "config.yaml")
+				configPath := filepath.Join(tempDir, "injector.yaml")
 				initialConfig := &Config{
 					InitContainerImage: InitContainerImage{
 						Registry:    "docker.io",
@@ -327,7 +327,7 @@ var _ = Describe("Config", func() {
 						PullPolicy: corev1.PullAlways,
 					},
 				}
-				configPath := filepath.Join(tempDir, "config.yaml")
+				configPath := filepath.Join(tempDir, "injector.yaml")
 				writeConfigFile(configPath, updatedConfig)
 
 				By("triggering configuration reload")
@@ -386,7 +386,7 @@ var _ = Describe("Config", func() {
 		Context("concurrent access", func() {
 			BeforeEach(func() {
 				By("creating initial configuration for concurrent testing")
-				configPath := filepath.Join(tempDir, "config.yaml")
+				configPath := filepath.Join(tempDir, "injector.yaml")
 				configData := &Config{
 					InitContainerImage: InitContainerImage{
 						Registry:    "docker.io",
