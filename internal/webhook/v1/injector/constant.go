@@ -28,7 +28,7 @@ const (
 	Domain string = "dragonfly.io"
 
 	// ConfigMap Path, should config in config/default/manager_webhook_patch.yaml.
-	ConfigMapPath string = "/etc/dragonfly-injector"
+	ConfigMapPath string = "/etc/dragonfly"
 
 	// Namespace labels for injection control.
 	NamespaceInjectLabelName  string = Domain + "/" + "inject"

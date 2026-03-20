@@ -3,7 +3,7 @@ kind: ConfigMap
 metadata:
   name: "config"
 data:
-  config.yaml: |
+  injector.yaml: |
     initContainerImage:
       registry: docker.io
       repository: dragonflyoss/client

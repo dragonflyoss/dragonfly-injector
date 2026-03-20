@@ -77,7 +77,7 @@ type ConfigManager struct {
 }
 
 func NewConfigManager(injectConfigMapPath string) *ConfigManager {
-	configPath := filepath.Join(injectConfigMapPath, "config.yaml")
+	configPath := filepath.Join(injectConfigMapPath, "injector.yaml")
 	return &ConfigManager{
 		mu:         sync.RWMutex{},
 		config:     LoadConfig(configPath),

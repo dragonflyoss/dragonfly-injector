@@ -11,7 +11,7 @@ webhooks:
       name: webhook-service
       namespace: system
       path: /mutate--v1-pod
-  failurePolicy: Fail
+  failurePolicy: Ignore
   name: mpod-v1.d7y.io
   rules:
   - apiGroups:

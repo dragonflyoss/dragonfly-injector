@@ -148,7 +148,7 @@ subjects:
 ---
 apiVersion: v1
 data:
-  config.yaml: |
+  injector.yaml: |
     initContainerImage:
       registry: docker.io
       repository: dragonflyoss/client
@@ -263,7 +263,7 @@ spec:
         - mountPath: /tmp/k8s-webhook-server/serving-certs
           name: webhook-certs
           readOnly: true
-        - mountPath: /etc/dragonfly-injector
+        - mountPath: /etc/dragonfly
           name: dragonfly-injector-config-volume
           readOnly: true
       securityContext:
@@ -339,7 +339,7 @@ webhooks:
       name: dragonfly-injector-webhook-service
       namespace: dragonfly-system
       path: /mutate--v1-pod
-  failurePolicy: Fail
+  failurePolicy: Ignore
   name: mpod-v1.d7y.io
   namespaceSelector:
     matchExpressions:
@@ -348,7 +348,6 @@ webhooks:
       values:
       - kube-system
       - cert-manager
-      - dragonfly-system
       - dragonfly-system
   rules:
   - apiGroups:
