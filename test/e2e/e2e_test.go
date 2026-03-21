@@ -317,9 +317,9 @@ var _ = Describe("Manager", Ordered, func() {
 			Expect(err).NotTo(HaveOccurred(), "Failed to create test namespace")
 
 			By("labeling the namespace to enable injection")
-			injectLable := injector.NamespaceInjectLabelName + "=" + injector.NamespaceInjectLabelValue
+			injectLabel := injector.NamespaceInjectLabelName + "=" + injector.NamespaceInjectLabelValue
 			cmd = exec.Command("kubectl", "label", "--overwrite", "ns", testNamespace,
-				injectLable,
+				injectLabel,
 				"pod-security.kubernetes.io/enforce=privileged")
 			_, err = utils.Run(cmd)
 			Expect(err).NotTo(HaveOccurred(), "Failed to label namespace")
