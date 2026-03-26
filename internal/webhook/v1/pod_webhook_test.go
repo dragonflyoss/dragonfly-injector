@@ -115,6 +115,80 @@ var _ = Describe("Pod Webhook", func() {
 		defaulter.injectors = []Injector{mockInj}
 	}
 
+	Context("When checking idempotency", func() {
+		It("should skip injection if the pod already has the injected annotation", func() {
+			By("creating a namespace with the injection label")
+			labeledNs := &corev1.Namespace{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: testNsName,
+					Labels: map[string]string{
+						injector.NamespaceInjectLabelName: injector.NamespaceInjectLabelValue,
+					},
+				},
+			}
+			setupDefaulter(labeledNs)
+
+			By("marking the pod as already injected")
+			testPod.Annotations[injector.InjectedAnnotationName] = injector.InjectedAnnotationValue
+
+			By("calling the Default method")
+			err := defaulter.Default(ctx, testPod)
+			Expect(err).NotTo(HaveOccurred())
+
+			By("verifying the injector was NOT called")
+			Expect(mockInj.called).To(BeFalse())
+		})
+
+		It("should set the injected annotation after successful injection", func() {
+			By("creating a namespace with the injection label")
+			labeledNs := &corev1.Namespace{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: testNsName,
+					Labels: map[string]string{
+						injector.NamespaceInjectLabelName: injector.NamespaceInjectLabelValue,
+					},
+				},
+			}
+			setupDefaulter(labeledNs)
+
+			By("calling the Default method")
+			err := defaulter.Default(ctx, testPod)
+			Expect(err).NotTo(HaveOccurred())
+
+			By("verifying the injector was called")
+			Expect(mockInj.called).To(BeTrue())
+
+			By("verifying the injected annotation was set")
+			Expect(testPod.Annotations[injector.InjectedAnnotationName]).To(Equal(injector.InjectedAnnotationValue))
+		})
+
+		It("should not double-inject on a second call", func() {
+			By("creating a namespace with the injection label")
+			labeledNs := &corev1.Namespace{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: testNsName,
+					Labels: map[string]string{
+						injector.NamespaceInjectLabelName: injector.NamespaceInjectLabelValue,
+					},
+				},
+			}
+			setupDefaulter(labeledNs)
+
+			By("calling the Default method the first time")
+			err := defaulter.Default(ctx, testPod)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(mockInj.called).To(BeTrue())
+
+			By("resetting the mock and calling Default a second time")
+			mockInj.Reset()
+			err = defaulter.Default(ctx, testPod)
+			Expect(err).NotTo(HaveOccurred())
+
+			By("verifying the injector was NOT called the second time")
+			Expect(mockInj.called).To(BeFalse())
+		})
+	})
+
 	Context("When evaluating if injection is required", func() {
 
 		Context("and injection is enabled by Namespace label", func() {

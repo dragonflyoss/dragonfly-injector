@@ -97,6 +97,12 @@ func (d *PodCustomDefaulter) applyDefaults(ctx context.Context, pod *corev1.Pod)
 		return
 	}
 
+	// Idempotency: skip pods that have already been injected.
+	if d.isAlreadyInjected(pod) {
+		logger.Info("Pod already injected, skip", "pod namespace", pod.GetNamespace(), "pod name", pod.GetName())
+		return
+	}
+
 	// Check if need inject.
 	if !d.needInject(ctx, pod) {
 		logger.Info("Pod not inject", "pod namespace", pod.GetNamespace(), "pod name", pod.GetName())
@@ -106,6 +112,21 @@ func (d *PodCustomDefaulter) applyDefaults(ctx context.Context, pod *corev1.Pod)
 	for _, ij := range d.injectors {
 		ij.Inject(pod, config)
 	}
+
+	// Mark pod as injected to prevent double injection.
+	if pod.Annotations == nil {
+		pod.Annotations = make(map[string]string)
+	}
+	pod.Annotations[injector.InjectedAnnotationName] = injector.InjectedAnnotationValue
+}
+
+func (d *PodCustomDefaulter) isAlreadyInjected(pod *corev1.Pod) bool {
+	annotations := pod.GetAnnotations()
+	if len(annotations) == 0 {
+		return false
+	}
+	v, ok := annotations[injector.InjectedAnnotationName]
+	return ok && v == injector.InjectedAnnotationValue
 }
 
 func (d *PodCustomDefaulter) needInject(ctx context.Context, pod *corev1.Pod) bool {
