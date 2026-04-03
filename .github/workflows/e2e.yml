@@ -24,6 +24,10 @@ jobs:
           chmod +x ./kind
           sudo mv ./kind /usr/local/bin/kind
 
+      - name: Setup Kind Cluster
+        run: |
+          make setup-test-e2e
+
       - name: Set up Helm
         uses: azure/setup-helm@v5
         with:
