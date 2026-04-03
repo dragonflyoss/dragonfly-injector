@@ -331,7 +331,7 @@ func IsDragonflyInstalled() bool {
 // StatefulSets, Deployments, and DaemonSets in dragonfly-system namespace
 func GetDragonfly() bool {
 	// Check StatefulSets
-	cmd := exec.Command("kubectl", "-n", "dragonfly-system", "get", "po", "-o", "wide")
+	cmd := exec.Command("kubectl", "-A", "get", "po", "-o", "wide")
 	output, err := Run(cmd)
 	fmt.Printf("---------------Dragonfly pods:\n%s\n", output)
 	if err != nil {
