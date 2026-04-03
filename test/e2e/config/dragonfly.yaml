@@ -38,3 +38,20 @@ client:
             - hostNamespace: docker.io
               serverAddr: https://index.docker.io
               capabilities: ['pull', 'resolve']
+
+injector:
+  enable: true
+  image:
+    registry: docker.io
+    repository: dragonflyoss/injector
+    tag: latest
+  initContainerImage:
+    registry: docker.io
+    repository: dragonflyoss/client
+    tag: v1.2.19
+  certManager:
+    enable: true
+    issuer:
+      name: ''
+      kind: Issuer
+      create: true
