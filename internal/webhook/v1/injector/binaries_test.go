@@ -368,7 +368,7 @@ var _ = Describe("BinariesInjector", func() {
 
 				By("verifying existing volume mount is preserved and new ones are appended")
 				Expect(pod.Spec.Containers[0].VolumeMounts[0].Name).To(Equal("existing-mount"))
-				Expect(pod.Spec.Containers[0].VolumeMounts).To(HaveLen(6)) // 1 existing + 5 new
+				Expect(pod.Spec.Containers[0].VolumeMounts).To(HaveLen(7)) // 1 existing + 5 new
 			})
 		})
 
