@@ -518,6 +518,8 @@ func verifyPodIsRunning(podName, namespace string) func(g Gomega) {
 		cmd := exec.Command("kubectl", "get", "pod", podName,
 			"-n", namespace, "-o", "jsonpath={.status.phase}")
 		output, err := utils.Run(cmd)
+		utils.GetDragonfly()
+
 		g.Expect(err).NotTo(HaveOccurred())
 		g.Expect(output).To(Equal("Running"), "Pod should be running")
 	}
