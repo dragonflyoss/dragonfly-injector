@@ -37,6 +37,7 @@ func (b *Binaries) Inject(pod *corev1.Pod, config *Config) {
 		filepath.Join(BinaryDirPath, DfgetBinaryName),
 		filepath.Join(BinaryDirPath, DfcacheBinaryName),
 		filepath.Join(BinaryDirPath, DfstoreBinaryName),
+		filepath.Join(BinaryDirPath, DfctlBinaryName),
 		filepath.Join(BinaryDirPath, DfdaemonBinaryName),
 		"-t",
 		BinaryVolumeMountPath + "/",
@@ -104,6 +105,13 @@ func (b *Binaries) Inject(pod *corev1.Pod, config *Config) {
 				Name:      BinaryVolumeName,
 				MountPath: filepath.Join(BinaryMountDirPath, DfstoreBinaryName),
 				SubPath:   DfstoreBinaryName,
+				ReadOnly:  true,
+			})
+
+			pod.Spec.Containers[i].VolumeMounts = append(pod.Spec.Containers[i].VolumeMounts, corev1.VolumeMount{
+				Name:      BinaryVolumeName,
+				MountPath: filepath.Join(BinaryMountDirPath, DfctlBinaryName),
+				SubPath:   DfctlBinaryName,
 				ReadOnly:  true,
 			})
 

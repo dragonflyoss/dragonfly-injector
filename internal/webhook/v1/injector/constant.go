@@ -54,5 +54,6 @@ const (
 	DfgetBinaryName    string = "dfget"
 	DfcacheBinaryName  string = "dfcache"
 	DfstoreBinaryName  string = "dfstore"
+	DfctlBinaryName    string = "dfctl"
 	DfdaemonBinaryName string = "dfdaemon"
 )

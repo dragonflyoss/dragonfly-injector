@@ -104,6 +104,12 @@ var _ = Describe("BinariesInjector", func() {
 			},
 			{
 				Name:      BinaryVolumeName,
+				MountPath: filepath.Join(BinaryMountDirPath, DfctlBinaryName),
+				SubPath:   DfctlBinaryName,
+				ReadOnly:  true,
+			},
+			{
+				Name:      BinaryVolumeName,
 				MountPath: filepath.Join(BinaryMountDirPath, DfdaemonBinaryName),
 				SubPath:   DfdaemonBinaryName,
 				ReadOnly:  true,
@@ -129,6 +135,7 @@ var _ = Describe("BinariesInjector", func() {
 				filepath.Join(BinaryDirPath, DfgetBinaryName),
 				filepath.Join(BinaryDirPath, DfcacheBinaryName),
 				filepath.Join(BinaryDirPath, DfstoreBinaryName),
+				filepath.Join(BinaryDirPath, DfctlBinaryName),
 				filepath.Join(BinaryDirPath, DfdaemonBinaryName),
 				"-t",
 				BinaryVolumeMountPath + "/",
