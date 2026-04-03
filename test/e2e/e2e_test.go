@@ -67,11 +67,6 @@ var _ = Describe("Manager", Ordered, func() {
 		_, err = utils.Run(cmd)
 		Expect(err).NotTo(HaveOccurred(), "Failed to label namespace with restricted policy")
 
-		// By("installing CRDs")
-		// cmd = exec.Command("make", "install")
-		// _, err = utils.Run(cmd)
-		// Expect(err).NotTo(HaveOccurred(), "Failed to install CRDs")
-
 		By("deploying the controller-manager")
 		cmd = exec.Command("make", "deploy", fmt.Sprintf("IMG=%s", projectImage))
 		_, err = utils.Run(cmd)
@@ -88,10 +83,6 @@ var _ = Describe("Manager", Ordered, func() {
 		By("undeploying the controller-manager")
 		cmd = exec.Command("make", "undeploy")
 		_, _ = utils.Run(cmd)
-
-		// By("uninstalling CRDs")
-		// cmd = exec.Command("make", "uninstall")
-		// _, _ = utils.Run(cmd)
 
 		By("removing manager namespace")
 		cmd = exec.Command("kubectl", "delete", "ns", namespace)
@@ -406,6 +397,7 @@ var _ = Describe("Manager", Ordered, func() {
 			}
 			podJsonBytes, err := json.Marshal(pod)
 			Expect(err).NotTo(HaveOccurred(), "Failed to marshal pod to json")
+
 			tempDir := GinkgoT().TempDir()
 			podFile := filepath.Join(tempDir, testPodName+".json")
 			err = os.WriteFile(podFile, podJsonBytes, 0644)
@@ -429,12 +421,12 @@ func finalCleanUp(podName, ns string) {
 	By("collecting logs")
 	cmd := exec.Command("kubectl", "logs", podName, "-n", ns)
 	logs, err := utils.Run(cmd)
-
 	if err == nil {
 		_, _ = fmt.Fprintf(GinkgoWriter, "%s logs: %s", podName, logs)
 	} else {
 		_, _ = fmt.Fprintf(GinkgoWriter, "Failed to get %s logs: %v", podName, err)
 	}
+
 	cmd = exec.Command("kubectl", "describe", "pod", podName, "-n", ns)
 	describeOutput, err := utils.Run(cmd)
 	if err == nil {
@@ -518,7 +510,6 @@ func verifyPodIsRunning(podName, namespace string) func(g Gomega) {
 		cmd := exec.Command("kubectl", "get", "pod", podName,
 			"-n", namespace, "-o", "jsonpath={.status.phase}")
 		output, err := utils.Run(cmd)
-		utils.GetDragonfly()
 
 		g.Expect(err).NotTo(HaveOccurred())
 		g.Expect(output).To(Equal("Running"), "Pod should be running")
@@ -531,6 +522,7 @@ func verifyInjection(podName, namespace string) func(g Gomega) {
 		cmd := exec.Command("kubectl", "get", "pod", podName, "-n", namespace,
 			"-o", "json")
 		podJson, err := utils.Run(cmd)
+
 		g.Expect(err).NotTo(HaveOccurred())
 		g.Expect(podJson).To(ContainSubstring(injector.DfdaemonUnixSockVolumeName),
 			"Should have dfdaemon socket volume")

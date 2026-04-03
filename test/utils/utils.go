@@ -171,6 +171,7 @@ func LoadImageToKindClusterWithName(name string) error {
 	if v, ok := os.LookupEnv("KIND_CLUSTER"); ok {
 		cluster = v
 	}
+
 	kindOptions := []string{"load", "docker-image", name, "--name", cluster}
 	cmd := exec.Command("kind", kindOptions...)
 	_, err := Run(cmd)
@@ -325,25 +326,4 @@ func IsDragonflyInstalled() bool {
 
 	daemonSets := GetNonEmptyLines(output)
 	return len(daemonSets) != 0
-}
-
-// IsDragonflyInstalled checks if Dragonfly components are installed by verifying
-// StatefulSets, Deployments, and DaemonSets in dragonfly-system namespace
-func GetDragonfly() bool {
-	// Check StatefulSets
-	// cmd := exec.Command("kubectl", "get", "po", "-A", "-o", "wide")
-	// output, err := Run(cmd)
-	// fmt.Printf("---------------Dragonfly pods:\n%s\n", output)
-	// if err != nil {
-	// return false
-	// }
-
-	cmd := exec.Command("kubectl", "describe", "po", "test-pod", "-n", "test-namespace-injection")
-	output, err := Run(cmd)
-	fmt.Printf("---------------Dragonfly pods:\n%s\n", output)
-	if err != nil {
-		return false
-	}
-
-	return true
 }
