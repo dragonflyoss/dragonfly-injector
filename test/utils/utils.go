@@ -326,3 +326,17 @@ func IsDragonflyInstalled() bool {
 	daemonSets := GetNonEmptyLines(output)
 	return len(daemonSets) != 0
 }
+
+// IsDragonflyInstalled checks if Dragonfly components are installed by verifying
+// StatefulSets, Deployments, and DaemonSets in dragonfly-system namespace
+func GetDragonfly() bool {
+	// Check StatefulSets
+	cmd := exec.Command("kubectl", "-n", "dragonfly-system", "get", "po", "-o", "wide")
+	output, err := Run(cmd)
+	fmt.Printf("---------------Dragonfly pods:\n%s\n", output)
+	if err != nil {
+		return false
+	}
+
+	return true
+}
