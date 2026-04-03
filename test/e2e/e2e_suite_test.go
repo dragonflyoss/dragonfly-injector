@@ -29,7 +29,6 @@ import (
 )
 
 var (
-	// Optional Environment Variables:
 	// - CERT_MANAGER_INSTALL_SKIP=true: Skips CertManager installation during test setup.
 	// These variables are useful if CertManager is already installed, avoiding
 	// re-installation and conflicts.
