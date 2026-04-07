@@ -104,6 +104,12 @@ var _ = Describe("BinariesInjector", func() {
 			},
 			{
 				Name:      BinaryVolumeName,
+				MountPath: filepath.Join(BinaryMountDirPath, DfctlBinaryName),
+				SubPath:   DfctlBinaryName,
+				ReadOnly:  true,
+			},
+			{
+				Name:      BinaryVolumeName,
 				MountPath: filepath.Join(BinaryMountDirPath, DfdaemonBinaryName),
 				SubPath:   DfdaemonBinaryName,
 				ReadOnly:  true,
@@ -129,6 +135,7 @@ var _ = Describe("BinariesInjector", func() {
 				filepath.Join(BinaryDirPath, DfgetBinaryName),
 				filepath.Join(BinaryDirPath, DfcacheBinaryName),
 				filepath.Join(BinaryDirPath, DfstoreBinaryName),
+				filepath.Join(BinaryDirPath, DfctlBinaryName),
 				filepath.Join(BinaryDirPath, DfdaemonBinaryName),
 				"-t",
 				BinaryVolumeMountPath + "/",
@@ -361,7 +368,7 @@ var _ = Describe("BinariesInjector", func() {
 
 				By("verifying existing volume mount is preserved and new ones are appended")
 				Expect(pod.Spec.Containers[0].VolumeMounts[0].Name).To(Equal("existing-mount"))
-				Expect(pod.Spec.Containers[0].VolumeMounts).To(HaveLen(6)) // 1 existing + 5 new
+				Expect(pod.Spec.Containers[0].VolumeMounts).To(HaveLen(7)) // 1 existing + 5 new
 			})
 		})
 
