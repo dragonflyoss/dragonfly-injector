@@ -269,6 +269,49 @@ var _ = Describe("Config", func() {
 		})
 	})
 
+	Describe("Validate", func() {
+		It("should pass for a valid config", func() {
+			c := DefaultConfig()
+			Expect(c.Validate()).NotTo(HaveOccurred())
+		})
+
+		It("should fail when registry is empty", func() {
+			c := &Config{
+				InitContainerImage: InitContainerImage{
+					Repository: "dragonflyoss/client",
+				},
+			}
+			Expect(c.Validate()).To(MatchError(ContainSubstring("registry")))
+		})
+
+		It("should fail when repository is empty", func() {
+			c := &Config{
+				InitContainerImage: InitContainerImage{
+					Registry: "docker.io",
+				},
+			}
+			Expect(c.Validate()).To(MatchError(ContainSubstring("repository")))
+		})
+	})
+
+	Describe("LoadConfig with validation", func() {
+		It("should fall back to defaults when config is missing required fields", func() {
+			By("writing a config with no repository")
+			configPath := filepath.Join(tempDir, "bad-config.yaml")
+			writeConfigFile(configPath, &Config{
+				InitContainerImage: InitContainerImage{
+					Registry: "custom.io",
+				},
+			})
+
+			By("loading the config")
+			loaded := LoadConfig(configPath)
+			expected := DefaultConfig()
+			Expect(loaded.InitContainerImage.Registry).To(Equal(expected.InitContainerImage.Registry))
+			Expect(loaded.InitContainerImage.Repository).To(Equal(expected.InitContainerImage.Repository))
+		})
+	})
+
 	Describe("ConfigManager", func() {
 		var (
 			configManager *ConfigManager
