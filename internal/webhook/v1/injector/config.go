@@ -17,7 +17,9 @@
 package injector
 
 import (
+	"bytes"
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sync"
@@ -74,6 +76,7 @@ type ConfigManager struct {
 	mu         sync.RWMutex
 	config     *Config
 	configPath string
+	lastRaw    []byte
 }
 
 func NewConfigManager(injectConfigMapPath string) *ConfigManager {
@@ -90,7 +93,6 @@ func (cm *ConfigManager) GetConfig() *Config {
 	defer cm.mu.RUnlock()
 
 	copiedConf := *cm.config
-	logger.Info("Get config", "config", copiedConf)
 	return &copiedConf
 }
 
@@ -112,11 +114,32 @@ func (cm *ConfigManager) Start(ctx context.Context) error {
 }
 
 func (cm *ConfigManager) reload() {
-	config := LoadConfig(cm.configPath)
+	raw, err := os.ReadFile(cm.configPath)
+	if err != nil {
+		logger.Error(err, "read config file for reload", "path", cm.configPath)
+		return
+	}
+
+	if bytes.Equal(raw, cm.lastRaw) {
+		return
+	}
+
+	config, err := LoadConfigFromFile(cm.configPath)
+	if err != nil {
+		logger.Error(err, "parse config file during reload", "path", cm.configPath)
+		return
+	}
+
+	if err := config.Validate(); err != nil {
+		logger.Error(err, "invalid config on reload, keeping current")
+		return
+	}
+
 	cm.mu.Lock()
 	defer cm.mu.Unlock()
 	cm.config = config
-	logger.Info("Configuration reloaded successfully")
+	cm.lastRaw = raw
+	logger.Info("Configuration reloaded")
 }
 
 func LoadConfig(injectConfigMapPath string) *Config {
@@ -124,8 +147,14 @@ func LoadConfig(injectConfigMapPath string) *Config {
 	if err != nil {
 		logger.Error(err, "load config from file failed")
 		logger.Info("use default config")
-		c = DefaultConfig()
+		return DefaultConfig()
 	}
+
+	if err := c.Validate(); err != nil {
+		logger.Error(err, "invalid config, using defaults")
+		return DefaultConfig()
+	}
+
 	return c
 }
 
@@ -142,4 +171,15 @@ func LoadConfigFromFile(injectConfigMapPath string) (*Config, error) {
 	}
 
 	return config, nil
+}
+
+// Validate checks that required fields are set.
+func (c *Config) Validate() error {
+	if c.InitContainerImage.Registry == "" {
+		return fmt.Errorf("initContainerImage.registry is required")
+	}
+	if c.InitContainerImage.Repository == "" {
+		return fmt.Errorf("initContainerImage.repository is required")
+	}
+	return nil
 }
