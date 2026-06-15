@@ -54,6 +54,55 @@ var _ = Describe("UnixSocketInjector", func() {
 		}
 	}
 
+	Context("when using a custom unix socket path from config", func() {
+		It("should use the custom path from config for volume and mount", func() {
+			By("creating a pod")
+			pod := &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{Name: "test-pod-custom-path"},
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{{Name: "container-1"}},
+				},
+			}
+
+			customPath := "/custom/path/dfdaemon.sock"
+			config := &Config{UnixSockPath: customPath}
+
+			By("performing injection with custom config")
+			injector.Inject(pod, config)
+
+			By("verifying volume uses custom path")
+			Expect(pod.Spec.Volumes).To(HaveLen(1))
+			Expect(pod.Spec.Volumes[0].HostPath.Path).To(Equal(customPath))
+
+			By("verifying volume mount uses custom path")
+			Expect(pod.Spec.Containers[0].VolumeMounts).To(HaveLen(1))
+			Expect(pod.Spec.Containers[0].VolumeMounts[0].MountPath).To(Equal(customPath))
+		})
+
+		It("should fall back to default path when config has empty UnixSockPath", func() {
+			By("creating a pod")
+			pod := &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{Name: "test-pod-default-path"},
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{{Name: "container-1"}},
+				},
+			}
+
+			config := &Config{UnixSockPath: ""}
+
+			By("performing injection with empty path config")
+			injector.Inject(pod, config)
+
+			By("verifying volume uses default path")
+			Expect(pod.Spec.Volumes).To(HaveLen(1))
+			Expect(pod.Spec.Volumes[0].HostPath.Path).To(Equal(DfdaemonUnixSockPath))
+
+			By("verifying volume mount uses default path")
+			Expect(pod.Spec.Containers[0].VolumeMounts).To(HaveLen(1))
+			Expect(pod.Spec.Containers[0].VolumeMounts[0].MountPath).To(Equal(DfdaemonUnixSockPath))
+		})
+	})
+
 	Context("when injecting unix socket volume and mounts", func() {
 		It("should inject into a pod with no existing volume or volume mounts", func() {
 			By("creating a simple pod")

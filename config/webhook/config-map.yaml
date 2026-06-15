@@ -11,3 +11,4 @@ data:
       digest: ''
       pullPolicy: IfNotPresent
       pullSecrets: []
+    unixSockPath: /var/run/dragonfly/dfdaemon.sock
