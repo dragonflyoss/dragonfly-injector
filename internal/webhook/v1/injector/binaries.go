@@ -22,6 +22,15 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
+// binaryNames are the dragonfly binaries copied from the client image and mounted into pods.
+var binaryNames = []string{
+	DfgetBinaryName,
+	DfcacheBinaryName,
+	DfstoreBinaryName,
+	DfctlBinaryName,
+	DfdaemonBinaryName,
+}
+
 type Binaries struct{}
 
 func NewBinaries() *Binaries {
@@ -30,18 +39,6 @@ func NewBinaries() *Binaries {
 
 func (b *Binaries) Inject(pod *corev1.Pod, config *Config) {
 	logger.Info("Binaries inject", "pod namespace", pod.GetNamespace(), "pod name", pod.GetName())
-
-	initContainerCmd := []string{
-		"install",
-		"-D",
-		filepath.Join(BinaryDirPath, DfgetBinaryName),
-		filepath.Join(BinaryDirPath, DfcacheBinaryName),
-		filepath.Join(BinaryDirPath, DfstoreBinaryName),
-		filepath.Join(BinaryDirPath, DfctlBinaryName),
-		filepath.Join(BinaryDirPath, DfdaemonBinaryName),
-		"-t",
-		BinaryVolumeMountPath + "/",
-	}
 
 	// Override initContainerImage with the value from annotations if it exists.
 	initContainerImage := config.GetInitContainerImageReference()
@@ -64,9 +61,15 @@ func (b *Binaries) Inject(pod *corev1.Pod, config *Config) {
 					MountPath: BinaryVolumeMountPath,
 				},
 			},
-			Command: initContainerCmd,
+			Command: binaryInstallCommand(),
 		}
-		pod.Spec.InitContainers = append(pod.Spec.InitContainers, *toolContainer)
+
+		// Prepend so the binaries install before init containers that use them, otherwise append.
+		if binariesInitFirstEnabled(pod) {
+			pod.Spec.InitContainers = append([]corev1.Container{*toolContainer}, pod.Spec.InitContainers...)
+		} else {
+			pod.Spec.InitContainers = append(pod.Spec.InitContainers, *toolContainer)
+		}
 		pod.Spec.ImagePullSecrets = append(pod.Spec.ImagePullSecrets, config.InitContainerImage.PullSecrets...)
 	}
 
@@ -81,47 +84,41 @@ func (b *Binaries) Inject(pod *corev1.Pod, config *Config) {
 	}
 
 	for i := range pod.Spec.Containers {
-		if !b.hasVolumeMount(&pod.Spec.Containers[i]) {
-			pod.Spec.Containers[i].VolumeMounts = append(pod.Spec.Containers[i].VolumeMounts, corev1.VolumeMount{
-				Name:      BinaryVolumeName,
-				MountPath: BinaryVolumeMountPath,
-			})
+		b.injectVolumeMounts(&pod.Spec.Containers[i])
+	}
 
-			pod.Spec.Containers[i].VolumeMounts = append(pod.Spec.Containers[i].VolumeMounts, corev1.VolumeMount{
-				Name:      BinaryVolumeName,
-				MountPath: filepath.Join(BinaryMountDirPath, DfgetBinaryName),
-				SubPath:   DfgetBinaryName,
-				ReadOnly:  true,
-			})
+	forEachNonInstallerInitContainer(pod, b.injectVolumeMounts)
+}
 
-			pod.Spec.Containers[i].VolumeMounts = append(pod.Spec.Containers[i].VolumeMounts, corev1.VolumeMount{
-				Name:      BinaryVolumeName,
-				MountPath: filepath.Join(BinaryMountDirPath, DfcacheBinaryName),
-				SubPath:   DfcacheBinaryName,
-				ReadOnly:  true,
-			})
+// binaryInstallCommand copies the dragonfly binaries from the client image into the shared volume.
+func binaryInstallCommand() []string {
+	cmd := make([]string, 0, len(binaryNames)+4)
+	cmd = append(cmd, "install", "-D")
+	for _, bin := range binaryNames {
+		cmd = append(cmd, filepath.Join(BinaryDirPath, bin))
+	}
 
-			pod.Spec.Containers[i].VolumeMounts = append(pod.Spec.Containers[i].VolumeMounts, corev1.VolumeMount{
-				Name:      BinaryVolumeName,
-				MountPath: filepath.Join(BinaryMountDirPath, DfstoreBinaryName),
-				SubPath:   DfstoreBinaryName,
-				ReadOnly:  true,
-			})
+	return append(cmd, "-t", BinaryVolumeMountPath+"/")
+}
 
-			pod.Spec.Containers[i].VolumeMounts = append(pod.Spec.Containers[i].VolumeMounts, corev1.VolumeMount{
-				Name:      BinaryVolumeName,
-				MountPath: filepath.Join(BinaryMountDirPath, DfctlBinaryName),
-				SubPath:   DfctlBinaryName,
-				ReadOnly:  true,
-			})
+// injectVolumeMounts mounts the shared volume and each binary subpath into the container.
+func (b *Binaries) injectVolumeMounts(c *corev1.Container) {
+	if b.hasVolumeMount(c) {
+		return
+	}
 
-			pod.Spec.Containers[i].VolumeMounts = append(pod.Spec.Containers[i].VolumeMounts, corev1.VolumeMount{
-				Name:      BinaryVolumeName,
-				MountPath: filepath.Join(BinaryMountDirPath, DfdaemonBinaryName),
-				SubPath:   DfdaemonBinaryName,
-				ReadOnly:  true,
-			})
-		}
+	c.VolumeMounts = append(c.VolumeMounts, corev1.VolumeMount{
+		Name:      BinaryVolumeName,
+		MountPath: BinaryVolumeMountPath,
+	})
+
+	for _, bin := range binaryNames {
+		c.VolumeMounts = append(c.VolumeMounts, corev1.VolumeMount{
+			Name:      BinaryVolumeName,
+			MountPath: filepath.Join(BinaryMountDirPath, bin),
+			SubPath:   bin,
+			ReadOnly:  true,
+		})
 	}
 }
 
