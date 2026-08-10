@@ -33,6 +33,7 @@ var logger = log.Log.WithName("dragonfly-inject")
 // Config is the configuration for dragonfly injection.
 type Config struct {
 	InitContainerImage InitContainerImage `yaml:"initContainerImage" json:"initContainerImage"`
+	UnixSockPath       string             `yaml:"unixSockPath" json:"unixSockPath"`
 }
 
 // InitContainerImage is the image configuration for the init container.
@@ -67,6 +68,7 @@ func DefaultConfig() *Config {
 			PullPolicy:  "IfNotPresent",
 			PullSecrets: []corev1.LocalObjectReference{},
 		},
+		UnixSockPath: DfdaemonUnixSockPath,
 	}
 }
 
