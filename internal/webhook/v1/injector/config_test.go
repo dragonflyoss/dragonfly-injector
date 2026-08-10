@@ -383,6 +383,19 @@ var _ = Describe("Config", func() {
 				Expect(config.InitContainerImage.Tag).To(Equal("v2.0.0"))
 				Expect(config.InitContainerImage.PullPolicy).To(Equal(corev1.PullAlways))
 			})
+
+			It("should record the raw bytes on construction and skip reload when unchanged", func() {
+				By("verifying lastRaw was populated by the constructor")
+				Expect(configManager.lastRaw).NotTo(BeEmpty())
+
+				By("triggering a reload without changing the file")
+				before := configManager.GetConfig()
+				configManager.reload()
+
+				By("verifying the config is unchanged")
+				after := configManager.GetConfig()
+				Expect(after).To(Equal(before))
+			})
 		})
 
 		Context("when configuration file does not exist", func() {

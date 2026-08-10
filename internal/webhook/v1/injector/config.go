@@ -81,10 +81,17 @@ type ConfigManager struct {
 
 func NewConfigManager(injectConfigMapPath string) *ConfigManager {
 	configPath := filepath.Join(injectConfigMapPath, "injector.yaml")
+	raw, err := os.ReadFile(configPath)
+	if err != nil {
+		logger.Error(err, "load config from file failed")
+		logger.Info("use default config")
+		return &ConfigManager{config: DefaultConfig(), configPath: configPath}
+	}
+
 	return &ConfigManager{
-		mu:         sync.RWMutex{},
-		config:     LoadConfig(configPath),
+		config:     loadConfigFromBytes(raw),
 		configPath: configPath,
+		lastRaw:    raw,
 	}
 }
 
@@ -124,7 +131,7 @@ func (cm *ConfigManager) reload() {
 		return
 	}
 
-	config, err := LoadConfigFromFile(cm.configPath)
+	config, err := parseConfig(raw)
 	if err != nil {
 		logger.Error(err, "parse config file during reload", "path", cm.configPath)
 		return
@@ -143,7 +150,20 @@ func (cm *ConfigManager) reload() {
 }
 
 func LoadConfig(injectConfigMapPath string) *Config {
-	c, err := LoadConfigFromFile(injectConfigMapPath)
+	raw, err := os.ReadFile(injectConfigMapPath)
+	if err != nil {
+		logger.Error(err, "load config from file failed")
+		logger.Info("use default config")
+		return DefaultConfig()
+	}
+
+	return loadConfigFromBytes(raw)
+}
+
+// loadConfigFromBytes parses raw config bytes, falling back to the default
+// config if parsing or validation fails.
+func loadConfigFromBytes(raw []byte) *Config {
+	c, err := parseConfig(raw)
 	if err != nil {
 		logger.Error(err, "load config from file failed")
 		logger.Info("use default config")
@@ -160,13 +180,18 @@ func LoadConfig(injectConfigMapPath string) *Config {
 
 // LoadConfigFromFile loads config from file.
 func LoadConfigFromFile(injectConfigMapPath string) (*Config, error) {
-	cf, err := os.ReadFile(injectConfigMapPath)
+	raw, err := os.ReadFile(injectConfigMapPath)
 	if err != nil {
 		return nil, err
 	}
 
+	return parseConfig(raw)
+}
+
+// parseConfig unmarshals raw YAML bytes into a Config.
+func parseConfig(raw []byte) (*Config, error) {
 	config := &Config{}
-	if err := yaml.Unmarshal(cf, config); err != nil {
+	if err := yaml.Unmarshal(raw, config); err != nil {
 		return nil, err
 	}
 
