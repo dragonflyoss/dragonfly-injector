@@ -9,6 +9,7 @@ on:
 
 jobs:
   docker:
+    if: github.repository == 'dragonflyoss/dragonfly-injector'
     name: Build and Push Docker Image
     runs-on: ubuntu-latest
     steps:
