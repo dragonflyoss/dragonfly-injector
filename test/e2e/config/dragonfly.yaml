@@ -1,4 +1,5 @@
 manager:
+  enable: true
   image:
     repository: dragonflyoss/manager
     tag: latest
