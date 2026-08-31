@@ -260,4 +260,30 @@ var _ = Describe("UnixSocketInjector", func() {
 			Expect(pod).To(Equal(expectedPod))
 		})
 	})
+
+	Context("when inject-init-containers is enabled", func() {
+		It("should mount the socket into non-installer init containers", func() {
+			By("creating a pod with inject-init-containers annotation")
+			pod := &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "init-socket-pod",
+					Annotations: map[string]string{
+						InjectInitContainersAnnotationName: InjectInitContainersAnnotationValue,
+					},
+				},
+				Spec: corev1.PodSpec{
+					InitContainers: []corev1.Container{{Name: "download-init", Image: "app:latest"}},
+					Containers:     []corev1.Container{{Name: "app"}},
+				},
+			}
+
+			By("performing injection")
+			injector.Inject(pod, &Config{})
+
+			By("verifying the socket is mounted into init containers and main containers")
+			expectedVolumeMount := makeExpectedVolumeMount()
+			Expect(pod.Spec.InitContainers[0].VolumeMounts).To(Equal([]corev1.VolumeMount{expectedVolumeMount}))
+			Expect(pod.Spec.Containers[0].VolumeMounts).To(Equal([]corev1.VolumeMount{expectedVolumeMount}))
+		})
+	})
 })
