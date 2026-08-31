@@ -270,7 +270,7 @@ func InstallDragonfly(configFile string) error {
 	}
 
 	// Install Dragonfly with configuration
-	cmd = exec.Command("helm", "install", "--wait", "--create-namespace",
+	cmd = exec.Command("helm", "install", "--wait", "--timeout", "15m", "--create-namespace",
 		"--namespace", "dragonfly-system", "dragonfly", "dragonfly/dragonfly", "-f", configFile)
 	_, err := Run(cmd)
 	return err
