@@ -368,7 +368,7 @@ var _ = Describe("BinariesInjector", func() {
 
 				By("verifying existing volume mount is preserved and new ones are appended")
 				Expect(pod.Spec.Containers[0].VolumeMounts[0].Name).To(Equal("existing-mount"))
-				Expect(pod.Spec.Containers[0].VolumeMounts).To(HaveLen(7)) // 1 existing + 5 new
+				Expect(pod.Spec.Containers[0].VolumeMounts).To(HaveLen(7)) // 1 existing + 6 new
 			})
 		})
 
@@ -400,6 +400,77 @@ var _ = Describe("BinariesInjector", func() {
 				Expect(pod.Spec.ImagePullSecrets).To(HaveLen(2))
 				Expect(pod.Spec.ImagePullSecrets[0].Name).To(Equal("existing-secret"))
 				Expect(pod.Spec.ImagePullSecrets[1].Name).To(Equal("new-secret"))
+			})
+		})
+
+		Context("when binaries-init-first is enabled", func() {
+			It("should prepend dragonfly-binaries before existing init containers", func() {
+				By("creating a pod with an existing init container and binaries-init-first annotation")
+				pod := makePod("prepend-pod", 1, map[string]string{
+					BinariesInitFirstAnnotationName: BinariesInitFirstAnnotationValue,
+				})
+				pod.Spec.InitContainers = []corev1.Container{
+					{Name: "download-init", Image: "app:latest"},
+				}
+
+				By("performing injection")
+				binariesInjector.Inject(pod, defaultConfig)
+
+				By("verifying dragonfly-binaries is prepended before existing init containers")
+				Expect(pod.Spec.InitContainers).To(HaveLen(2))
+				Expect(pod.Spec.InitContainers[0].Name).To(Equal(InitContainerName))
+				Expect(pod.Spec.InitContainers[1].Name).To(Equal("download-init"))
+			})
+		})
+
+		Context("when inject-init-containers is enabled", func() {
+			It("should mount binaries into non-installer init containers", func() {
+				By("creating a pod with inject-init-containers and binaries-init-first annotations")
+				pod := makePod("init-mount-pod", 1, map[string]string{
+					BinariesInitFirstAnnotationName:    BinariesInitFirstAnnotationValue,
+					InjectInitContainersAnnotationName: InjectInitContainersAnnotationValue,
+				})
+				pod.Spec.InitContainers = []corev1.Container{
+					{Name: "download-init", Image: "app:latest"},
+				}
+
+				By("performing injection")
+				binariesInjector.Inject(pod, defaultConfig)
+
+				By("verifying volume mounts are added to the non-installer init container and main containers")
+				Expect(pod.Spec.InitContainers[1].VolumeMounts).To(Equal(makeExpectedVolumeMounts()))
+				Expect(pod.Spec.Containers[0].VolumeMounts).To(Equal(makeExpectedVolumeMounts()))
+			})
+
+			It("should not mount binaries into dragonfly-binaries itself", func() {
+				By("creating a pod with only the inject-init-containers annotation")
+				pod := makePod("installer-only-pod", 0, map[string]string{
+					InjectInitContainersAnnotationName: InjectInitContainersAnnotationValue,
+				})
+
+				By("performing injection")
+				binariesInjector.Inject(pod, defaultConfig)
+
+				By("verifying dragonfly-binaries keeps only the installer volume mount")
+				Expect(pod.Spec.InitContainers).To(HaveLen(1))
+				Expect(pod.Spec.InitContainers[0].Name).To(Equal(InitContainerName))
+				Expect(pod.Spec.InitContainers[0].VolumeMounts).To(HaveLen(1))
+				Expect(pod.Spec.InitContainers[0].VolumeMounts[0].MountPath).To(Equal(BinaryVolumeMountPath))
+			})
+
+			It("should not mount binaries into init containers when the annotation is absent", func() {
+				By("creating a pod with an existing init container and no inject-init-containers annotation")
+				pod := makePod("default-init-pod", 1, nil)
+				pod.Spec.InitContainers = []corev1.Container{
+					{Name: "download-init", Image: "app:latest"},
+				}
+
+				By("performing injection")
+				binariesInjector.Inject(pod, defaultConfig)
+
+				By("verifying the existing init container is left untouched")
+				Expect(pod.Spec.InitContainers[0].Name).To(Equal("download-init"))
+				Expect(pod.Spec.InitContainers[0].VolumeMounts).To(BeEmpty())
 			})
 		})
 	})

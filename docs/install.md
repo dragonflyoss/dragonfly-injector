@@ -101,6 +101,26 @@
            name: dragonfly-binaries-volume
    ```
 
+## Init-container workloads
+
+By default the binaries and the dfdaemon socket are mounted only on the main
+containers, and `dragonfly-binaries` is appended after any existing init containers.
+Workloads that call `dfget` from an init container (for example a download or warm-up
+step) need the binaries installed first and mounted on that init container. Two opt-in
+annotations enable this:
+
+```yaml
+metadata:
+  annotations:
+    dragonfly.io/inject: 'true'
+    dragonfly.io/binaries-init-first: 'true'
+    dragonfly.io/inject-init-containers: 'true'
+```
+
+`dragonfly.io/binaries-init-first` installs `dragonfly-binaries` before the other init
+containers, and `dragonfly.io/inject-init-containers` mounts the binaries and the
+dfdaemon socket on every init container except the installer itself.
+
 ## Undeploy
 
 ```sh
