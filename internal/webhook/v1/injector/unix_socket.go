@@ -34,13 +34,18 @@ func (us *UnixSocket) Inject(pod *corev1.Pod, config *Config) {
 		return
 	}
 
+	sockPath := config.UnixSockPath
+	if sockPath == "" {
+		sockPath = DfdaemonUnixSockPath
+	}
+
 	if !us.hasVolume(pod) {
 		hostPathType := corev1.HostPathSocket
 		dfdaemonSocketVolume := corev1.Volume{
 			Name: DfdaemonUnixSockVolumeName,
 			VolumeSource: corev1.VolumeSource{
 				HostPath: &corev1.HostPathVolumeSource{
-					Path: DfdaemonUnixSockPath,
+					Path: sockPath,
 					Type: &hostPathType,
 				},
 			},
@@ -52,7 +57,7 @@ func (us *UnixSocket) Inject(pod *corev1.Pod, config *Config) {
 		if !us.hasVolumeMount(&c) {
 			dfdaemonSocketVolumeMount := corev1.VolumeMount{
 				Name:      DfdaemonUnixSockVolumeName,
-				MountPath: DfdaemonUnixSockPath,
+				MountPath: sockPath,
 			}
 			pod.Spec.Containers[i].VolumeMounts = append(pod.Spec.Containers[i].VolumeMounts, dfdaemonSocketVolumeMount)
 		}
