@@ -45,11 +45,20 @@ const (
 	DfdaemonUnixSockPath              string = "/var/run/dragonfly/dfdaemon.sock"
 
 	InitContainerImageAnnotation string = Domain + "/" + "init-container-image"
-	InitContainerName            string = "dragonfly-binaries"
-	BinaryVolumeName             string = InitContainerName + "-" + "volume"
-	BinaryVolumeMountPath        string = "/dragonfly/bin"
-	BinaryDirPath                string = "/usr/local/bin"
-	BinaryMountDirPath           string = "/usr/local/bin"
+
+	// BinariesInitFirstAnnotationName prepends the dragonfly-binaries init container instead of appending it.
+	BinariesInitFirstAnnotationName  string = Domain + "/" + "binaries-init-first"
+	BinariesInitFirstAnnotationValue string = "true"
+
+	// InjectInitContainersAnnotationName also mounts the binaries and dfdaemon socket on init containers.
+	InjectInitContainersAnnotationName  string = Domain + "/" + "inject-init-containers"
+	InjectInitContainersAnnotationValue string = "true"
+
+	InitContainerName     string = "dragonfly-binaries"
+	BinaryVolumeName      string = InitContainerName + "-" + "volume"
+	BinaryVolumeMountPath string = "/dragonfly/bin"
+	BinaryDirPath         string = "/usr/local/bin"
+	BinaryMountDirPath    string = "/usr/local/bin"
 
 	DfgetBinaryName    string = "dfget"
 	DfcacheBinaryName  string = "dfcache"
