@@ -30,7 +30,7 @@ After `kubectl apply`, you can edit the ConfigMap named `dragonfly-injector-conf
 kubectl -n dragonfly-system edit configmap dragonfly-injector-config
 ```
 
-Default configuration (reload time: 15s):
+Default configuration (reload time: 30s):
 ```yaml
 injector.yaml: |
   initContainerImage:
@@ -41,5 +41,15 @@ injector.yaml: |
     pullPolicy: IfNotPresent
     pullSecrets: []
 ```
+
+### Webhook configuration and failure modes
+
+The webhook reads its config from the `injector.yaml` key of the
+`dragonfly-injector-config` ConfigMap (mounted at `/etc/dragonfly`), reloads it
+every 30s, and is registered with `failurePolicy: Ignore`. Missing or invalid
+config falls back to `injector.DefaultConfig()`; a missing dfdaemon socket or an
+invalid injected image does not, and leaves Pods stuck before they start. See
+[docs/webhook.md](docs/webhook.md) for the full list of configuration knobs and
+the failure modes the webhook can and cannot tolerate.
 
 For more details, please refer to the [docs/install.md](docs/install.md).
