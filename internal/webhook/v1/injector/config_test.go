@@ -172,30 +172,30 @@ var _ = Describe("Config", func() {
 				Expect(err).To(HaveOccurred())
 			})
 
-			It("should handle partial config with zero values", func() {
+			It("should fill defaults for fields missing in a partial config file", func() {
 				By("creating a partial config file with only registry set")
 				configPath := filepath.Join(tempDir, "partial-config.yaml")
-				partialConfig := &Config{
-					InitContainerImage: InitContainerImage{
-						Registry: "partial-registry.io",
-					},
-				}
-				writeConfigFile(configPath, partialConfig)
+				partialYAML := "initContainerImage:\n  registry: partial-registry.io\n"
+				err := os.WriteFile(configPath, []byte(partialYAML), 0644)
+				Expect(err).NotTo(HaveOccurred())
 
 				By("loading the partial config")
 				loadedConfig, err := LoadConfigFromFile(configPath)
 				Expect(err).NotTo(HaveOccurred())
 
-				By("verifying the loaded configuration with zero values")
+				By("verifying the overridden field is kept")
 				Expect(loadedConfig.InitContainerImage.Registry).To(Equal("partial-registry.io"))
-				Expect(loadedConfig.InitContainerImage.Repository).To(BeEmpty())
-				Expect(loadedConfig.InitContainerImage.Tag).To(BeEmpty())
+
+				By("verifying missing fields fall back to defaults instead of zero values")
+				defaults := DefaultConfig()
+				Expect(loadedConfig.InitContainerImage.Repository).To(Equal(defaults.InitContainerImage.Repository))
+				Expect(loadedConfig.InitContainerImage.Tag).To(Equal(defaults.InitContainerImage.Tag))
 				Expect(loadedConfig.InitContainerImage.Digest).To(BeEmpty())
-				Expect(loadedConfig.InitContainerImage.PullPolicy).To(BeEmpty())
-				Expect(loadedConfig.InitContainerImage.PullSecrets).To(BeNil())
+				Expect(loadedConfig.InitContainerImage.PullPolicy).To(Equal(defaults.InitContainerImage.PullPolicy))
+				Expect(loadedConfig.InitContainerImage.PullSecrets).To(BeEmpty())
 			})
 
-			It("should handle empty JSON file", func() {
+			It("should keep defaults when config file is empty", func() {
 				By("creating an empty config file")
 				configPath := filepath.Join(tempDir, "empty-config.yaml")
 				err := os.WriteFile(configPath, []byte("{}"), 0644)
@@ -205,15 +205,31 @@ var _ = Describe("Config", func() {
 				loadedConfig, err := LoadConfigFromFile(configPath)
 				Expect(err).NotTo(HaveOccurred())
 
-				By("verifying the config has zero values")
-				Expect(loadedConfig.InitContainerImage.Registry).To(BeEmpty())
-				Expect(loadedConfig.InitContainerImage.Repository).To(BeEmpty())
+				By("verifying the config equals the defaults")
+				Expect(loadedConfig).To(Equal(DefaultConfig()))
 			})
 		})
 	})
 
 	Describe("LoadConfig", func() {
 		Context("when loading configuration with fallback behavior", func() {
+			It("should apply defaults for fields missing from an existing file", func() {
+				By("creating a config file that only overrides the tag")
+				configPath := filepath.Join(tempDir, "partial-config.yaml")
+				partialYAML := "initContainerImage:\n  tag: v9.9.9\n"
+				err := os.WriteFile(configPath, []byte(partialYAML), 0644)
+				Expect(err).NotTo(HaveOccurred())
+
+				By("loading the partial config through the fallback loader")
+				loadedConfig := LoadConfig(configPath)
+
+				By("verifying the override is kept and the rest falls back to defaults")
+				defaults := DefaultConfig()
+				Expect(loadedConfig.InitContainerImage.Tag).To(Equal("v9.9.9"))
+				Expect(loadedConfig.InitContainerImage.Registry).To(Equal(defaults.InitContainerImage.Registry))
+				Expect(loadedConfig.InitContainerImage.Repository).To(Equal(defaults.InitContainerImage.Repository))
+			})
+
 			It("should load config from file when file exists", func() {
 				By("creating an existing config file")
 				configPath := filepath.Join(tempDir, "existing-config.yaml")
@@ -235,6 +251,9 @@ var _ = Describe("Config", func() {
 				Expect(loadedConfig.InitContainerImage.Repository).To(Equal("my-org/my-image"))
 				Expect(loadedConfig.InitContainerImage.Tag).To(Equal("v3.0.0"))
 				Expect(loadedConfig.InitContainerImage.PullPolicy).To(Equal(corev1.PullNever))
+				By("verifying defaults are not applied when the file specifies overrides")
+				Expect(loadedConfig.InitContainerImage.Digest).To(BeEmpty())
+				Expect(loadedConfig.InitContainerImage.PullSecrets).To(BeEmpty())
 			})
 
 			It("should return default config when file does not exist", func() {
@@ -315,6 +334,42 @@ var _ = Describe("Config", func() {
 
 				By("verifying the second copy is unaffected")
 				Expect(config2.InitContainerImage.Tag).To(Equal("v1.0.0"))
+			})
+
+			It("should not share mutable slices with callers", func() {
+				By("writing a config containing pull secrets")
+				configPath := filepath.Join(tempDir, "injector.yaml")
+				writeConfigFile(configPath, &Config{
+					InitContainerImage: InitContainerImage{
+						Registry:    "docker.io",
+						Repository:  "dragonflyoss/client",
+						Tag:         "v1.0.0",
+						PullSecrets: []corev1.LocalObjectReference{{Name: "secret-0"}},
+					},
+				})
+				configManager.reload()
+
+				By("mutating the slice through the returned copy")
+				config := configManager.GetConfig()
+				config.InitContainerImage.PullSecrets[0].Name = "mutated"
+				config.InitContainerImage.PullSecrets = append(config.InitContainerImage.PullSecrets, corev1.LocalObjectReference{Name: "extra"})
+
+				By("verifying the cached config is unaffected")
+				cached := configManager.GetConfig()
+				Expect(cached.InitContainerImage.PullSecrets).To(HaveLen(1))
+				Expect(cached.InitContainerImage.PullSecrets[0].Name).To(Equal("secret-0"))
+			})
+
+			It("should not replace the cached config when reload keeps it unchanged", func() {
+				By("capturing the initial config identity")
+				before := configManager.GetConfig()
+
+				By("reloading without changing the file")
+				configManager.reload()
+
+				By("verifying the config content is identical after reload")
+				after := configManager.GetConfig()
+				Expect(*after).To(Equal(*before))
 			})
 
 			It("should reload configuration correctly", func() {

@@ -80,7 +80,10 @@ func main() {
 	flag.BoolVar(&enableHTTP2, "enable-http2", false,
 		"If set, HTTP/2 will be enabled for the metrics and webhook servers")
 	opts := zap.Options{
-		Development: true,
+		// Production mode disables per-debug-level verbosity and stacktrace
+		//-heavy output. Development remains available via the zap flags
+		// bound below (e.g. --zap-devel=true).
+		Development: false,
 	}
 	opts.BindFlags(flag.CommandLine)
 	flag.Parse()
