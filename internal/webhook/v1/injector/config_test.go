@@ -119,6 +119,7 @@ var _ = Describe("Config", func() {
 			Expect(defaultConfig.InitContainerImage.Digest).To(BeEmpty())
 			Expect(defaultConfig.InitContainerImage.PullPolicy).To(Equal(corev1.PullPolicy("IfNotPresent")))
 			Expect(defaultConfig.InitContainerImage.PullSecrets).To(BeEmpty())
+			Expect(defaultConfig.UnixSockPath).To(Equal(DfdaemonUnixSockPath))
 		})
 	})
 

@@ -38,6 +38,10 @@ const (
 	PodInjectAnnotationName  string = Domain + "/" + "inject"
 	PodInjectAnnotationValue string = "true"
 
+	// Injection status annotation for idempotency.
+	InjectedAnnotationName  string = Domain + "/" + "injected"
+	InjectedAnnotationValue string = "true"
+
 	// Dfdaemon unix sock config.
 	SkipUnixSockInjectAnnotationName  string = Domain + "/" + "skip-unix-sock-inject"
 	SkipUnixSockInjectAnnotationValue string = "true"
