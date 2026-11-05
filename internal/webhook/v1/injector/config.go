@@ -20,6 +20,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"reflect"
 	"sync"
 	"time"
 
@@ -89,8 +90,22 @@ func (cm *ConfigManager) GetConfig() *Config {
 	cm.mu.RLock()
 	defer cm.mu.RUnlock()
 
-	copiedConf := *cm.config
-	logger.Info("Get config", "config", copiedConf)
+	return cm.config.DeepCopy()
+}
+
+// DeepCopy returns a deep copy of the config, so callers cannot mutate
+// shared fields (e.g. PullSecrets) of the cached config through the
+// returned copy.
+func (c *Config) DeepCopy() *Config {
+	if c == nil {
+		return nil
+	}
+
+	copiedConf := *c
+	if c.InitContainerImage.PullSecrets != nil {
+		copiedConf.InitContainerImage.PullSecrets = make([]corev1.LocalObjectReference, len(c.InitContainerImage.PullSecrets))
+		copy(copiedConf.InitContainerImage.PullSecrets, c.InitContainerImage.PullSecrets)
+	}
 	return &copiedConf
 }
 
@@ -105,7 +120,6 @@ func (cm *ConfigManager) Start(ctx context.Context) error {
 			logger.Info("Stopping config file watcher")
 			return nil
 		case <-ticker.C:
-			logger.Info("Periodic reload check")
 			cm.reload()
 		}
 	}
@@ -115,8 +129,11 @@ func (cm *ConfigManager) reload() {
 	config := LoadConfig(cm.configPath)
 	cm.mu.Lock()
 	defer cm.mu.Unlock()
+	if reflect.DeepEqual(cm.config, config) {
+		return
+	}
 	cm.config = config
-	logger.Info("Configuration reloaded successfully")
+	logger.Info("Configuration reloaded successfully", "config", config)
 }
 
 func LoadConfig(injectConfigMapPath string) *Config {
@@ -129,14 +146,17 @@ func LoadConfig(injectConfigMapPath string) *Config {
 	return c
 }
 
-// LoadConfigFromFile loads config from file.
+// LoadConfigFromFile loads config from file. Fields not present in the
+// file keep their default values, so a partial config file (e.g. only
+// overriding the image tag) does not silently reset the rest of the
+// configuration to zero values.
 func LoadConfigFromFile(injectConfigMapPath string) (*Config, error) {
 	cf, err := os.ReadFile(injectConfigMapPath)
 	if err != nil {
 		return nil, err
 	}
 
-	config := &Config{}
+	config := DefaultConfig()
 	if err := yaml.Unmarshal(cf, config); err != nil {
 		return nil, err
 	}
