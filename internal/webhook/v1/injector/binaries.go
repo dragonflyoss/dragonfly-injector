@@ -22,6 +22,14 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
+var binaryNames = []string{
+	DfgetBinaryName,
+	DfcacheBinaryName,
+	DfstoreBinaryName,
+	DfctlBinaryName,
+	DfdaemonBinaryName,
+}
+
 type Binaries struct{}
 
 func NewBinaries() *Binaries {
@@ -31,17 +39,11 @@ func NewBinaries() *Binaries {
 func (b *Binaries) Inject(pod *corev1.Pod, config *Config) {
 	logger.Info("Binaries inject", "pod namespace", pod.GetNamespace(), "pod name", pod.GetName())
 
-	initContainerCmd := []string{
-		"install",
-		"-D",
-		filepath.Join(BinaryDirPath, DfgetBinaryName),
-		filepath.Join(BinaryDirPath, DfcacheBinaryName),
-		filepath.Join(BinaryDirPath, DfstoreBinaryName),
-		filepath.Join(BinaryDirPath, DfctlBinaryName),
-		filepath.Join(BinaryDirPath, DfdaemonBinaryName),
-		"-t",
-		BinaryVolumeMountPath + "/",
+	initContainerCmd := []string{"install", "-D"}
+	for _, bin := range binaryNames {
+		initContainerCmd = append(initContainerCmd, filepath.Join(BinaryDirPath, bin))
 	}
+	initContainerCmd = append(initContainerCmd, "-t", BinaryVolumeMountPath+"/")
 
 	// Override initContainerImage with the value from annotations if it exists.
 	initContainerImage := config.GetInitContainerImageReference()
@@ -87,40 +89,14 @@ func (b *Binaries) Inject(pod *corev1.Pod, config *Config) {
 				MountPath: BinaryVolumeMountPath,
 			})
 
-			pod.Spec.Containers[i].VolumeMounts = append(pod.Spec.Containers[i].VolumeMounts, corev1.VolumeMount{
-				Name:      BinaryVolumeName,
-				MountPath: filepath.Join(BinaryMountDirPath, DfgetBinaryName),
-				SubPath:   DfgetBinaryName,
-				ReadOnly:  true,
-			})
-
-			pod.Spec.Containers[i].VolumeMounts = append(pod.Spec.Containers[i].VolumeMounts, corev1.VolumeMount{
-				Name:      BinaryVolumeName,
-				MountPath: filepath.Join(BinaryMountDirPath, DfcacheBinaryName),
-				SubPath:   DfcacheBinaryName,
-				ReadOnly:  true,
-			})
-
-			pod.Spec.Containers[i].VolumeMounts = append(pod.Spec.Containers[i].VolumeMounts, corev1.VolumeMount{
-				Name:      BinaryVolumeName,
-				MountPath: filepath.Join(BinaryMountDirPath, DfstoreBinaryName),
-				SubPath:   DfstoreBinaryName,
-				ReadOnly:  true,
-			})
-
-			pod.Spec.Containers[i].VolumeMounts = append(pod.Spec.Containers[i].VolumeMounts, corev1.VolumeMount{
-				Name:      BinaryVolumeName,
-				MountPath: filepath.Join(BinaryMountDirPath, DfctlBinaryName),
-				SubPath:   DfctlBinaryName,
-				ReadOnly:  true,
-			})
-
-			pod.Spec.Containers[i].VolumeMounts = append(pod.Spec.Containers[i].VolumeMounts, corev1.VolumeMount{
-				Name:      BinaryVolumeName,
-				MountPath: filepath.Join(BinaryMountDirPath, DfdaemonBinaryName),
-				SubPath:   DfdaemonBinaryName,
-				ReadOnly:  true,
-			})
+			for _, bin := range binaryNames {
+				pod.Spec.Containers[i].VolumeMounts = append(pod.Spec.Containers[i].VolumeMounts, corev1.VolumeMount{
+					Name:      BinaryVolumeName,
+					MountPath: filepath.Join(BinaryMountDirPath, bin),
+					SubPath:   bin,
+					ReadOnly:  true,
+				})
+			}
 		}
 	}
 }
