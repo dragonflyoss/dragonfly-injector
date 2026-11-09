@@ -30,7 +30,7 @@ After `kubectl apply`, you can edit the ConfigMap named `dragonfly-injector-conf
 kubectl -n dragonfly-system edit configmap dragonfly-injector-config
 ```
 
-Default configuration (reload time: 15s):
+Default configuration (reload time: 30s):
 ```yaml
 injector.yaml: |
   initContainerImage:
