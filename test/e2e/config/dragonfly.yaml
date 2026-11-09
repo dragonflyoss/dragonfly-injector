@@ -1,16 +1,7 @@
 manager:
-  enable: true
   image:
     repository: dragonflyoss/manager
     tag: latest
-  replicas: 1
-  resources:
-    requests:
-      cpu: '0'
-      memory: '0'
-    limits:
-      cpu: '1'
-      memory: '2Gi'
   metrics:
     enable: true
 
@@ -18,14 +9,6 @@ scheduler:
   image:
     repository: dragonflyoss/scheduler
     tag: latest
-  replicas: 1
-  resources:
-    requests:
-      cpu: '0'
-      memory: '0'
-    limits:
-      cpu: '2'
-      memory: '4Gi'
   metrics:
     enable: true
 
@@ -33,14 +16,6 @@ seedClient:
   image:
     repository: dragonflyoss/client
     tag: latest
-  replicas: 1
-  resources:
-    requests:
-      cpu: '0'
-      memory: '0'
-    limits:
-      cpu: '2'
-      memory: '4Gi'
   metrics:
     enable: true
 
@@ -48,13 +23,6 @@ client:
   image:
     repository: dragonflyoss/client
     tag: latest
-  resources:
-    requests:
-      cpu: '0'
-      memory: '0'
-    limits:
-      cpu: '2'
-      memory: '4Gi'
   metrics:
     enable: true
   dfinit:
@@ -70,9 +38,3 @@ client:
             - hostNamespace: docker.io
               serverAddr: https://index.docker.io
               capabilities: ['pull', 'resolve']
-
-mysql:
-  enable: true
-
-redis:
-  enable: true
