@@ -22,6 +22,16 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
+// InjectedBinaries is the set of dragonfly client binaries installed by
+// the init container and mounted into the application containers.
+var InjectedBinaries = []string{
+	DfgetBinaryName,
+	DfcacheBinaryName,
+	DfstoreBinaryName,
+	DfctlBinaryName,
+	DfdaemonBinaryName,
+}
+
 type Binaries struct{}
 
 func NewBinaries() *Binaries {
@@ -31,17 +41,13 @@ func NewBinaries() *Binaries {
 func (b *Binaries) Inject(pod *corev1.Pod, config *Config) {
 	logger.Info("Binaries inject", "pod namespace", pod.GetNamespace(), "pod name", pod.GetName())
 
-	initContainerCmd := []string{
+	initContainerCmd := append([]string{
 		"install",
 		"-D",
-		filepath.Join(BinaryDirPath, DfgetBinaryName),
-		filepath.Join(BinaryDirPath, DfcacheBinaryName),
-		filepath.Join(BinaryDirPath, DfstoreBinaryName),
-		filepath.Join(BinaryDirPath, DfctlBinaryName),
-		filepath.Join(BinaryDirPath, DfdaemonBinaryName),
-		"-t",
-		BinaryVolumeMountPath + "/",
-	}
+	},
+		b.sourcePaths()...,
+	)
+	initContainerCmd = append(initContainerCmd, "-t", BinaryVolumeMountPath+"/")
 
 	// Override initContainerImage with the value from annotations if it exists.
 	initContainerImage := config.GetInitContainerImageReference()
@@ -81,44 +87,38 @@ func (b *Binaries) Inject(pod *corev1.Pod, config *Config) {
 	}
 
 	for i := range pod.Spec.Containers {
-		if !b.hasVolumeMount(&pod.Spec.Containers[i]) {
-			pod.Spec.Containers[i].VolumeMounts = append(pod.Spec.Containers[i].VolumeMounts, corev1.VolumeMount{
-				Name:      BinaryVolumeName,
-				MountPath: BinaryVolumeMountPath,
-			})
+		b.injectContainerVolumeMounts(&pod.Spec.Containers[i])
+	}
+}
 
-			pod.Spec.Containers[i].VolumeMounts = append(pod.Spec.Containers[i].VolumeMounts, corev1.VolumeMount{
-				Name:      BinaryVolumeName,
-				MountPath: filepath.Join(BinaryMountDirPath, DfgetBinaryName),
-				SubPath:   DfgetBinaryName,
-				ReadOnly:  true,
-			})
+// sourcePaths returns the in-image source paths of the injected binaries.
+func (b *Binaries) sourcePaths() []string {
+	paths := make([]string, 0, len(InjectedBinaries))
+	for _, name := range InjectedBinaries {
+		paths = append(paths, filepath.Join(BinaryDirPath, name))
+	}
+	return paths
+}
 
-			pod.Spec.Containers[i].VolumeMounts = append(pod.Spec.Containers[i].VolumeMounts, corev1.VolumeMount{
-				Name:      BinaryVolumeName,
-				MountPath: filepath.Join(BinaryMountDirPath, DfcacheBinaryName),
-				SubPath:   DfcacheBinaryName,
-				ReadOnly:  true,
-			})
+// injectContainerVolumeMounts ensures each binary has its volume mount in
+// the container. Mounts are checked per binary, so a container that only
+// received a subset of the mounts (e.g. from a partial or older injection)
+// is brought back to the full set without duplicating the existing ones.
+func (b *Binaries) injectContainerVolumeMounts(container *corev1.Container) {
+	if !hasVolumeMountNamed(container, BinaryVolumeName, BinaryVolumeMountPath) {
+		container.VolumeMounts = append(container.VolumeMounts, corev1.VolumeMount{
+			Name:      BinaryVolumeName,
+			MountPath: BinaryVolumeMountPath,
+		})
+	}
 
-			pod.Spec.Containers[i].VolumeMounts = append(pod.Spec.Containers[i].VolumeMounts, corev1.VolumeMount{
+	for _, name := range InjectedBinaries {
+		mountPath := filepath.Join(BinaryMountDirPath, name)
+		if !hasVolumeMountNamed(container, BinaryVolumeName, mountPath) {
+			container.VolumeMounts = append(container.VolumeMounts, corev1.VolumeMount{
 				Name:      BinaryVolumeName,
-				MountPath: filepath.Join(BinaryMountDirPath, DfstoreBinaryName),
-				SubPath:   DfstoreBinaryName,
-				ReadOnly:  true,
-			})
-
-			pod.Spec.Containers[i].VolumeMounts = append(pod.Spec.Containers[i].VolumeMounts, corev1.VolumeMount{
-				Name:      BinaryVolumeName,
-				MountPath: filepath.Join(BinaryMountDirPath, DfctlBinaryName),
-				SubPath:   DfctlBinaryName,
-				ReadOnly:  true,
-			})
-
-			pod.Spec.Containers[i].VolumeMounts = append(pod.Spec.Containers[i].VolumeMounts, corev1.VolumeMount{
-				Name:      BinaryVolumeName,
-				MountPath: filepath.Join(BinaryMountDirPath, DfdaemonBinaryName),
-				SubPath:   DfdaemonBinaryName,
+				MountPath: mountPath,
+				SubPath:   name,
 				ReadOnly:  true,
 			})
 		}
@@ -140,17 +140,6 @@ func (b *Binaries) hasInitContainer(pod *corev1.Pod) bool {
 func (b *Binaries) hasVolume(pod *corev1.Pod) bool {
 	for _, v := range pod.Spec.Volumes {
 		if v.Name == BinaryVolumeName {
-			return true
-		}
-	}
-
-	return false
-}
-
-// hasVolumeMount checks if the container has the volume mount.
-func (b *Binaries) hasVolumeMount(c *corev1.Container) bool {
-	for _, vm := range c.VolumeMounts {
-		if vm.Name == BinaryVolumeName {
 			return true
 		}
 	}

@@ -48,13 +48,12 @@ func (us *UnixSocket) Inject(pod *corev1.Pod, config *Config) {
 		pod.Spec.Volumes = append(pod.Spec.Volumes, dfdaemonSocketVolume)
 	}
 
-	for i, c := range pod.Spec.Containers {
-		if !us.hasVolumeMount(&c) {
-			dfdaemonSocketVolumeMount := corev1.VolumeMount{
+	for i := range pod.Spec.Containers {
+		if !hasVolumeMountNamed(&pod.Spec.Containers[i], DfdaemonUnixSockVolumeName, DfdaemonUnixSockPath) {
+			pod.Spec.Containers[i].VolumeMounts = append(pod.Spec.Containers[i].VolumeMounts, corev1.VolumeMount{
 				Name:      DfdaemonUnixSockVolumeName,
 				MountPath: DfdaemonUnixSockPath,
-			}
-			pod.Spec.Containers[i].VolumeMounts = append(pod.Spec.Containers[i].VolumeMounts, dfdaemonSocketVolumeMount)
+			})
 		}
 	}
 }
@@ -70,10 +69,11 @@ func (us *UnixSocket) hasVolume(pod *corev1.Pod) bool {
 	return false
 }
 
-// hasVolumeMount checks if the container has the volume mount.
-func (us *UnixSocket) hasVolumeMount(c *corev1.Container) bool {
+// hasVolumeMountNamed checks if the container already mounts the given
+// volume at the given path, so re-invocation only adds missing mounts.
+func hasVolumeMountNamed(c *corev1.Container, volumeName, mountPath string) bool {
 	for _, vm := range c.VolumeMounts {
-		if vm.Name == DfdaemonUnixSockVolumeName {
+		if vm.Name == volumeName && vm.MountPath == mountPath {
 			return true
 		}
 	}

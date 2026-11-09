@@ -319,6 +319,24 @@ var _ = Describe("BinariesInjector", func() {
 			})
 		})
 
+		Context("when a container only has a subset of the binary mounts", func() {
+			It("should add the missing mounts without duplicating existing ones", func() {
+				By("creating a pod whose container only mounts the base volume and dfget")
+				pod := makePod("subset-pod", 1, nil)
+				subset := []corev1.VolumeMount{
+					makeExpectedVolumeMounts()[0],
+					makeExpectedVolumeMounts()[1],
+				}
+				pod.Spec.Containers[0].VolumeMounts = subset
+
+				By("performing injection")
+				binariesInjector.Inject(pod, defaultConfig)
+
+				By("verifying the container now has the full mount set")
+				Expect(pod.Spec.Containers[0].VolumeMounts).To(ConsistOf(makeExpectedVolumeMounts()))
+			})
+		})
+
 		Context("when the pod has no containers", func() {
 			It("should inject init container and volume but no volume mounts", func() {
 				By("creating a pod with no containers")
@@ -478,33 +496,44 @@ var _ = Describe("BinariesInjector", func() {
 		})
 	})
 
-	Describe("hasVolumeMount", func() {
-		Context("when the volume mount exists", func() {
+	Describe("hasVolumeMountNamed", func() {
+		Context("when the volume is mounted at the given path", func() {
 			It("should return true", func() {
 				container := &corev1.Container{
 					VolumeMounts: []corev1.VolumeMount{
 						{Name: BinaryVolumeName, MountPath: BinaryVolumeMountPath},
 					},
 				}
-				Expect(binariesInjector.hasVolumeMount(container)).To(BeTrue())
+				Expect(hasVolumeMountNamed(container, BinaryVolumeName, BinaryVolumeMountPath)).To(BeTrue())
 			})
 		})
 
-		Context("when the volume mount does not exist", func() {
+		Context("when the volume is mounted at a different path", func() {
 			It("should return false", func() {
 				container := &corev1.Container{
 					VolumeMounts: []corev1.VolumeMount{
-						{Name: "other-volume", MountPath: "/other"},
+						{Name: BinaryVolumeName, MountPath: "/somewhere-else"},
 					},
 				}
-				Expect(binariesInjector.hasVolumeMount(container)).To(BeFalse())
+				Expect(hasVolumeMountNamed(container, BinaryVolumeName, BinaryVolumeMountPath)).To(BeFalse())
+			})
+		})
+
+		Context("when another volume is mounted at the given path", func() {
+			It("should return false", func() {
+				container := &corev1.Container{
+					VolumeMounts: []corev1.VolumeMount{
+						{Name: "other-volume", MountPath: BinaryVolumeMountPath},
+					},
+				}
+				Expect(hasVolumeMountNamed(container, BinaryVolumeName, BinaryVolumeMountPath)).To(BeFalse())
 			})
 		})
 
 		Context("when there are no volume mounts", func() {
 			It("should return false", func() {
 				container := &corev1.Container{}
-				Expect(binariesInjector.hasVolumeMount(container)).To(BeFalse())
+				Expect(hasVolumeMountNamed(container, BinaryVolumeName, BinaryVolumeMountPath)).To(BeFalse())
 			})
 		})
 	})
